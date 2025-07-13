@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เครื่องวัดแรงลม</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: "Kanit", sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 24px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #1976d2;
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    label, canvas {
+      display: block;
+      margin-top: 16px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: #fafafa;
+      transition: border-color 0.3s;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #90caf9;
+    }
+
+    button {
+      margin-top: 16px;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #1565c0;
+    }
+
+    button:disabled {
+      background-color: #bbdefb;
+      cursor: not-allowed;
+    }
+
+    canvas {
+      width: 100%;
+      height: 140px;
+      background: #f0f4f8;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+
+    #results, #summary {
+      margin-top: 20px;
+      background: #f5f5f5;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .btn-group button {
+      margin-top: 10px;
+    }
+    #page2 button:last-of-type {
+      background-color: #f44336;
+    }
+    #page2 button:last-of-type:hover {
+      background-color: #d32f2f;
+    }
+    #page3 .btn-group button:last-child {
+      background-color: #607d8b !important;
+      color: white !important;
+    }
+    #page3 .btn-group button:last-child:hover {
+      background-color: #455a64 !important;
+    }
+    /* Style for the new microphone permission button */
+    #requestMicBtn {
+      background-color: #4CAF50; /* Green color */
+      margin-bottom: 10px; /* Add some space before the next button */
+    }
+    #requestMicBtn:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="page1">
+    <center><img width="100px" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dh1EFfBVQyfw8WKTTaaqjwzfRXWzLyL6yw&s" alt="Health Sensor App Logo"></center>
+    <h1>Health Sensor App</h1>
+    <h1>การวัดค่าทางสุขภาพ</h1>
+    <h2>ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</h2>
+
+    <div class="mb-3">
+        <label for="name">ชื่อผู้ใช้</label>
+        <input id="name" name="name" type="text" class="form-control" placeholder="ชื่อผู้ใช้" required>
+    </div>
+    <div class="mb-3">
+        <label for="age">อายุ</label>
+        <input id="age" name="age" type="number" class="form-control" placeholder="อายุ" required>
+    </div>
+    <div class="mb-3">
+        <label for="gender">เพศ</label>
+        <select id="gender" name="gender" class="form-control" required>
+            <option value="">-- เลือกเพศ --</option>
+            <option value="ชาย">ชาย</option>
+            <option value="หญิง">หญิง</option>
+            <option value="อื่น ๆ">อื่น ๆ</option>
+        </select>
+    </div>
+    <button id="requestMicBtn" onclick="requestMicrophonePermission()">🎤 ขออนุญาตใช้ไมโครโฟน</button>
+    <button onclick="goToMeasurementPage()">เข้าสู่การวัดแรงลม</button>
+</div>
+
+<div class="container hidden" id="page2">
+    <h2>🌬️ วัดแรงลม</h2>
+    <p id="results">กดเริ่มเพื่อวัดแรงลม</p>
+    <canvas id="graphCanvas"></canvas>
+    <button onclick="startMeasurement()">▶️ เริ่มวัดรอบที่ <span id="roundNo">1</span></button>
+    <button onclick="stopMeasurement()">⏹️ หยุด</button>
+    <button onclick="goBackToPage1()">🔙 กลับไปกรอกข้อมูล</button>
+</div>
+
+<div class="container hidden" id="page3" style="text-align: center;">
+    <h2>📄 สรุปผลการวัด</h2>
+    <div id="summary"></div>
+    <div class="btn-group">
+        <button onclick="savePDF()">💾 บันทึก PDF</button>
+        <button onclick="resetAll()">🔄 เริ่มใหม่</button>
+    </div>
+</div>
+
+<script>
+    let user = {}, round = 0, allRounds = [], blowData = [], isMeasuring = false;
+    let audioContext, analyser, microphone, dataArray, animationId;
+
+    // Check if the browser supports getUserMedia and AudioContext
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('เบราว์เซอร์ของคุณไม่รองรับการเข้าถึงไมโครโฟน กรุณาลองใช้เบราว์เซอร์อื่น เช่น Chrome, Firefox, Safari.');
+        document.getElementById('page1').innerHTML = '<p style="text-align: center; color: red;">ไม่รองรับการทำงานนี้บนเบราว์เซอร์ของคุณ</p>';
+    }
+
+    // New function to request microphone permission explicitly
+    async function requestMicrophonePermission() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('เบราว์เซอร์ของคุณไม่รองรับการเข้าถึงไมโครโฟน');
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // If successful, stop the tracks immediately as we only needed to trigger the permission prompt
+            stream.getTracks().forEach(track => track.stop());
+            alert('อนุญาตการเข้าถึงไมโครโฟนแล้ว! คุณสามารถดำเนินการต่อได้');
+            // Optionally disable the button or change its text
+            document.getElementById('requestMicBtn').textContent = '✅ ไมโครโฟนพร้อมใช้งาน';
+            document.getElementById('requestMicBtn').disabled = true;
+        } catch (e) {
+            console.error('Error accessing microphone:', e);
+            alert('ไม่สามารถเข้าถึงไมโครโฟนได้: ' + e.message + '\nโปรดตรวจสอบการอนุญาตการเข้าถึงไมโครโฟนของเบราว์เซอร์คุณ');
+            // Re-enable button if permission was denied
+            document.getElementById('requestMicBtn').disabled = false;
+        }
+    }
+
+    function goToMeasurementPage() {
+        const name = document.getElementById('name').value.trim();
+        const age = document.getElementById('age').value.trim();
+        const gender = document.getElementById('gender').value;
+
+        if (!name || !age || !gender) {
+            alert('กรุณากรอกข้อมูลผู้ใช้ให้ครบถ้วน: ชื่อ, อายุ, และเพศ');
+            return;
+        }
+
+        if (isNaN(age) || parseInt(age) <= 0) {
+            alert('กรุณากรอกอายุให้ถูกต้อง');
+            return;
+        }
+
+        user = { name, age, gender };
+        document.getElementById('page1').classList.add('hidden');
+        document.getElementById('page2').classList.remove('hidden');
+        resetMeasurementState();
+    }
+
+    function goBackToPage1() {
+        document.getElementById('page2').classList.add('hidden');
+        document.getElementById('page1').classList.remove('hidden');
+        stopMeasurement();
+        round = 0;
+        allRounds = [];
+        document.getElementById('roundNo').textContent = '1';
+        // Reset the microphone permission button state when going back to page 1
+        document.getElementById('requestMicBtn').textContent = '🎤 ขออนุญาตใช้ไมโครโฟน';
+        document.getElementById('requestMicBtn').disabled = false;
+    }
+
+    function startMeasurement() {
+        if (isMeasuring) {
+            alert('กำลังวัดค่าอยู่แล้ว กรุณากด "หยุด" ก่อนเริ่มรอบใหม่');
+            return;
+        }
+
+        if (round >= 5) {
+            alert('ทำการวัดครบ 5 รอบแล้ว กรุณากด "สรุปผล" หรือ "เริ่มใหม่"');
+            return;
+        }
+
+        round++;
+        document.getElementById('roundNo').textContent = round;
+        blowData = [];
+        document.getElementById('results').textContent = `รอบที่ ${round} - กำลังรอการวัดแรงลม...`;
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (microphone) {
+                    microphone.disconnect();
+                }
+                microphone = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                microphone.connect(analyser);
+
+                isMeasuring = true;
+                detect();
+            })
+            .catch(e => {
+                console.error('Error accessing microphone:', e);
+                alert('ไม่สามารถใช้ไมโครโฟนได้: ' + e.message + '\nโปรดตรวจสอบการอนุญาตการเข้าถึงไมโครโฟนของเบราว์เซอร์คุณ');
+                isMeasuring = false;
+            });
+    }
+
+    function stopMeasurement() {
+        if (!isMeasuring) return;
+        isMeasuring = false;
+        cancelAnimationFrame(animationId);
+
+        if (microphone) {
+            microphone.mediaStream.getTracks().forEach(track => track.stop());
+            microphone.disconnect();
+            microphone = null;
+        }
+        finishRound();
+    }
+
+    function detect() {
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        const w = canvas.width, h = canvas.height;
+        let levels = [];
+
+        function draw() {
+            if (!analyser || !dataArray) return;
+            analyser.getByteFrequencyData(dataArray);
+            let avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+
+            if (avg > 20) {
+                blowData.push(avg);
+            }
+
+            levels.push(avg);
+            if (levels.length > 100) {
+                levels.shift();
+            }
+
+            ctx.clearRect(0, 0, w, h);
+
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const yPos = h - (i / 10 * h);
+                ctx.beginPath();
+                ctx.moveTo(0, yPos);
+                ctx.lineTo(w, yPos);
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            levels.forEach((val, i) => {
+                const x = i * (w / 100);
+                const y = h - (val / 255 * h);
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.strokeStyle = '#0288d1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            document.getElementById('results').innerHTML = `รอบที่ ${round} - ระดับเสียง: <b>${avg.toFixed(1)}</b>`;
+
+            if (isMeasuring) {
+                animationId = requestAnimationFrame(draw);
+            }
+        }
+        draw();
+    }
+
+    function finishRound() {
+        const avg = blowData.length > 0 ? blowData.reduce((a, b) => a + b, 0) / blowData.length : 0;
+        allRounds.push(avg);
+        if (round < 5) {
+            alert(`การวัดรอบที่ ${round} เสร็จสิ้น! ค่าเฉลี่ย: ${avg.toFixed(1)}\nกรุณากด "เริ่มวัดรอบที่ ${round + 1}" เพื่อวัดต่อ`);
+        } else {
+            showSummary();
+        }
+    }
+
+    function showSummary() {
+        document.getElementById('page2').classList.add('hidden');
+        document.getElementById('page3').classList.remove('hidden');
+
+        const avgAll = allRounds.length > 0 ? allRounds.reduce((a, b) => a + b, 0) / allRounds.length : 0;
+        let summaryHTML = `
+            <strong>👤 ชื่อ:</strong> ${user.name}<br>
+            <strong>🎂 อายุ:</strong> ${user.age}<br>
+            <strong>⚧️ เพศ:</strong> ${user.gender}<br><hr>
+            <h3>ผลการวัดแต่ละรอบ:</h3>
+            ${allRounds.map((v, i) => {
+                const level = Math.min(10, Math.round((v / 255) * 10));
+                return `รอบที่ ${i + 1}: <strong>${v.toFixed(1)}</strong> 🌬️ (ระดับ <strong>${level}/10</strong>)`;
+            }).join('<br>')}<br><br>
+            <h3>ค่าเฉลี่ยรวม: <strong>${avgAll.toFixed(1)}</strong></h3>
+        `;
+        document.getElementById('summary').innerHTML = summaryHTML;
+    }
+
+    function savePDF() {
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+            alert('JSPDF library not loaded. Please check the script include.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        try {
+            doc.setFont("Helvetica", "normal");
+        } catch (e) {
+            console.warn("Font 'THSarabun' not found, falling back to 'Helvetica'. For full Thai support, embed a custom font.");
+        }
+
+        doc.setFontSize(18);
+        doc.text(`รายงานการวัดค่าทางสุขภาพ`, 105, 20, null, null, 'center');
+
+        doc.setFontSize(12);
+        doc.text(`ข้อมูลผู้ใช้:`, 20, 35);
+        doc.text(`ชื่อ: ${user.name}`, 20, 45);
+        doc.text(`อายุ: ${user.age}`, 20, 55);
+        doc.text(`เพศ: ${user.gender}`, 20, 65);
+
+        let y = 80;
+        doc.text(`ผลการวัดแรงลมแต่ละรอบ:`, 20, y);
+        y += 10;
+
+        allRounds.forEach((val, i) => {
+            const level = Math.min(10, Math.round((val / 255) * 10));
+            doc.text(`รอบที่ ${i + 1}: ${val.toFixed(1)} (ระดับ ${level}/10)`, 30, y);
+            y += 7;
+        });
+
+        const avgAll = allRounds.length > 0 ? allRounds.reduce((a, b) => a + b, 0) / allRounds.length : 0;
+        y += 10;
+        doc.text(`ค่าเฉลี่ยรวม: ${avgAll.toFixed(1)}`, 20, y);
+
+        doc.save(`รายงานแรงลม_${user.name}.pdf`);
+    }
+
+    function resetAll() {
+        user = {};
+        round = 0;
+        allRounds = [];
+        blowData = [];
+        isMeasuring = false;
+
+        document.getElementById('page3').classList.add('hidden');
+        document.getElementById('page1').classList.remove('hidden');
+        document.getElementById('name').value = '';
+        document.getElementById('age').value = '';
+        document.getElementById('gender').value = '';
+        document.getElementById('roundNo').textContent = '1';
+        document.getElementById('results').textContent = 'กดเริ่มเพื่อวัดแรงลม';
+
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (microphone) {
+            microphone.mediaStream.getTracks().forEach(track => track.stop());
+            microphone.disconnect();
+            microphone = null;
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close().then(() => {
+                audioContext = null;
+                console.log('AudioContext closed');
+            });
+        }
+        // Reset the microphone permission button state
+        document.getElementById('requestMicBtn').textContent = '🎤 ขออนุญาตใช้ไมโครโฟน';
+        document.getElementById('requestMicBtn').disabled = false;
+    }
+
+    function resetMeasurementState() {
+        blowData = [];
+        isMeasuring = false;
+        cancelAnimationFrame(animationId);
+        if (microphone) {
+            microphone.mediaStream.getTracks().forEach(track => track.stop());
+            microphone.disconnect();
+            microphone = null;
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close().then(() => {
+                audioContext = null;
+                console.log('AudioContext closed after resetMeasurementState');
+            });
+        }
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!document.fonts.check('16px Kanit')) {
+            const link = document.createElement('link');
+            link.href = "https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500&display=swap";
+            link.rel = "stylesheet";
+            document.head.appendChild(link);
+        }
+    });
+
+</script>
+
+</body>
+</html>
