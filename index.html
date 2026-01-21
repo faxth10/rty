@@ -55,8 +55,8 @@
     <div class="sub-title">ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</div>
     <div class="input-group"><label>ชื่อผู้ใช้งาน</label><input id="name" type="text" placeholder="ระบุชื่อ"></div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" placeholder="เช่น 15"></div>
-        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" placeholder="เช่น 160"></div>
+        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" placeholder="เช่น 25"></div>
+        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" placeholder="เช่น 170"></div>
     </div>
     <div class="input-group"><label>เพศ</label><select id="gender"><option value="">เลือกเพศ</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
     <button class="btn-start" onclick="initMicAndNextPage()">เข้าสู่การทดสอบ 🚀</button>
@@ -65,13 +65,13 @@
 <div class="container hidden" id="page2" style="text-align: center;">
     <div class="round-tag">รอบที่ <span id="roundNo">1</span> / 5</div>
     <div id="status-display" class="status-idle">
-        <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมสำหรับการทดสอบ</div>
+        <div id="status-text" style="font-size: 18px; font-weight: 600;">สูดหายใจลึกๆ แล้วเป่าแรงๆ!</div>
         <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
     </div>
     <div class="zone-container">
-        <div id="z-low" class="zone-card z-red">ควรปรับปรุง<br>< 50%</div>
+        <div id="z-low" class="zone-card z-red">ควรปรับปรุง<br>&lt; 50%</div>
         <div id="z-mid" class="zone-card z-yellow">ปกติ<br>50-80%</div>
-        <div id="z-good" class="zone-card z-green">ดีมาก<br>> 80%</div>
+        <div id="z-good" class="zone-card z-green">ดีมาก<br>&gt; 80%</div>
     </div>
     <canvas id="graphCanvas"></canvas>
     <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่ารอบนี้</button>
@@ -85,9 +85,9 @@
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
         <div style="font-size: 14px; opacity: 0.8;">ค่าสูงสุดที่ทำได้ (Best PEFR)</div>
-        <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
-        <div id="final-percent" style="font-size:18px; font-weight:600; margin-bottom: 5px;"></div>
-        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:10px; margin-top:10px;"></div>
+        <div id="final-best" style="font-size:48px; font-weight:700;">0</div>
+        <div id="final-percent" style="font-size:16px; margin-bottom: 5px;"></div>
+        <div id="final-status" style="font-size:20px; font-weight:700; margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;"></div>
     </div>
 
     <button class="btn-start" onclick="window.print()">💾 พิมพ์รายงาน (PDF)</button>
@@ -99,7 +99,7 @@
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
     let silenceTimer, currentRoundMax = 0;
 
-    // สูตรทางการแพทย์ Gregg and Nunn (ป้องกันค่าติดลบ)
+    // สูตร Gregg and Nunn (ป้องกันค่าติดลบ)
     function getPredictedPEFR(age, height, gender) {
         let h_m = height / 100;
         if (gender === 'ชาย') {
@@ -120,8 +120,7 @@
             user = { name: n, age: parseInt(a), height: parseInt(h), gender: g };
             user.predicted = getPredictedPEFR(user.age, user.height, user.gender);
             
-            // ป้องกันความผิดพลาดของสูตรในเด็กเล็ก
-            if (user.predicted < 100) user.predicted = 350; 
+            if (user.predicted < 100) user.predicted = 400; 
 
             document.getElementById('page1').classList.add('hidden');
             document.getElementById('page2').classList.remove('hidden');
@@ -134,7 +133,8 @@
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
             microphone = audioContext.createMediaStreamSource(globalStream);
-            analyser.fftSize = 256;
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.5;
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             microphone.connect(analyser);
         }
@@ -159,25 +159,23 @@
             analyser.getByteFrequencyData(dataArray);
             let avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
             
-            // ปรับ Sensitivity เป็น 25.0 เพื่อให้ค่าไม่ต่ำเกินไป
-            let pefr = Math.min(850, avg * 25.0); 
+            let pefr = Math.min(900, avg * 30.0); 
             if (pefr > currentRoundMax) currentRoundMax = pefr;
 
-            if (pefr > 40) {
+            if (pefr > 50) {
                 clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(stopTestRound, 1700);
+                silenceTimer = setTimeout(stopTestRound, 1500);
             }
 
             document.getElementById('val-num').textContent = Math.round(pefr);
             
-            // ตรวจสอบ Zone ตาม % จริง
-            const currentPercent = (pefr / user.predicted) * 100;
+            const currentPct = (pefr / user.predicted) * 100;
             document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
             
-            if (currentPercent >= 80) {
-                statusDisplay.className = "status-good"; statusText.textContent = "ดีมาก!";
+            if (currentPct >= 80) {
+                statusDisplay.className = "status-good"; statusText.textContent = "ดีเยี่ยม!";
                 document.getElementById('z-good').classList.add('active');
-            } else if (currentPercent >= 50) {
+            } else if (currentPct >= 50) {
                 statusDisplay.className = "status-low"; statusText.textContent = "ปกติ";
                 document.getElementById('z-mid').classList.add('active');
             } else if (pefr > 30) {
@@ -186,8 +184,8 @@
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = (currentPercent >= 80) ? '#4caf50' : (currentPercent >= 50 ? '#fbc02d' : '#f44336');
-            ctx.fillRect(0, canvas.height, canvas.width, -(pefr/850 * canvas.height));
+            ctx.fillStyle = (currentPct >= 80) ? '#4caf50' : (currentPct >= 50 ? '#fbc02d' : '#f44336');
+            ctx.fillRect(0, canvas.height, canvas.width, -(pefr/900 * canvas.height));
             animationId = requestAnimationFrame(draw);
         }
         draw();
@@ -209,30 +207,25 @@
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
         
-        // ใช้ค่าสูงสุด (Best PEFR) ตามหลักการแพทย์
         const bestPefr = Math.max(...allRounds);
         const percent = Math.round((bestPefr / user.predicted) * 100);
 
         document.getElementById('summary-data').innerHTML = `
             <b>ผู้ทดสอบ:</b> ${user.name}<br>
-            <b>ข้อมูล:</b> เพศ ${user.gender}, อายุ ${user.age} ปี, สูง ${user.height} ซม.<br>
+            <b>ข้อมูล:</b> ${user.age} ปี | ${user.height} ซม. | เพศ${user.gender}<br>
             <b>ค่ามาตรฐานของคุณ:</b> ${user.predicted} L/min<br><hr>
             ${allRounds.map((v, i) => `รอบที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
         `;
-
-        document.getElementById('final-avg').textContent = Math.round(bestPefr) + " L/min";
+        
+        document.getElementById('final-best').textContent = Math.round(bestPefr) + " L/min";
         document.getElementById('final-percent').textContent = `ประสิทธิภาพปอด: ${percent}% ของมาตรฐาน`;
         
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
-
-        if(percent >= 80) { 
-            st.textContent = "ระดับ: ดีเยี่ยม 🟢"; card.style.background = "#dcfce7"; card.style.color = "#15803d"; 
-        } else if(percent >= 50) { 
-            st.textContent = "ระดับ: ปกติ 🟡"; card.style.background = "#fef3c7"; card.style.color = "#b45309"; 
-        } else { 
-            st.textContent = "ระดับ: ควรปรึกษาแพทย์ 🔴"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
-        }
+        
+        if(percent >= 80) { st.textContent = "เกณฑ์: ดีเยี่ยม 🌟"; card.style.background = "#dcfce7"; card.style.color = "#15803d"; }
+        else if(percent >= 50) { st.textContent = "เกณฑ์: ปกติ ✅"; card.style.background = "#fef3c7"; card.style.color = "#b45309"; }
+        else { st.textContent = "เกณฑ์: ควรปรับปรุง ⚠️"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; }
     }
 </script>
 </body>
