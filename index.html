@@ -85,10 +85,10 @@
     <div id="summary-data" style="background:#f8fafc; padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
-        <div style="font-size: 14px; opacity: 0.8;">ค่าสูงสุดที่ทำได้</div>
+        <div style="font-size: 14px; opacity: 0.8;">ค่าเฉลี่ยรวม 5 ครั้ง</div>
         <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
         <div id="final-percent" style="font-size:18px; font-weight:600; margin-bottom: 10px;"></div>
-        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); pt-2; margin-top:10px;"></div>
+        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:10px; margin-top:10px;"></div>
     </div>
 
     <button class="btn-excel" onclick="exportToExcel()">📊 ดาวน์โหลดไฟล์ Excel (.csv)</button>
@@ -101,7 +101,6 @@
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
     let silenceTimer, currentRoundMax = 0;
 
-    // สูตรทางการแพทย์ (Knudson)
     function getPredictedPEFR(age, height, gender) {
         if (gender === 'ชาย') {
             return Math.round(((height / 100) * 5.48) + (age * 0.03) - 0.42 * 60);
@@ -115,14 +114,11 @@
         const a = document.getElementById('age').value;
         const h = document.getElementById('height').value;
         const g = document.getElementById('gender').value;
-        
         if (!n || !a || !h || !g) return alert('กรุณากรอกข้อมูลให้ครบ');
-        
         try {
             globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             user = { name: n, age: parseInt(a), height: parseInt(h), gender: g };
             user.predicted = getPredictedPEFR(user.age, user.height, user.gender);
-            
             document.getElementById('page1').classList.add('hidden');
             document.getElementById('page2').classList.remove('hidden');
         } catch (e) { alert('กรุณายอมรับการเข้าถึงไมโครโฟน'); }
@@ -204,19 +200,23 @@
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
         
-        // ทางการแพทย์ใช้ค่าที่ "ดีที่สุด" (Max) จาก 5 รอบ
-        const bestPefr = Math.max(...allRounds);
-        const percent = Math.round((bestPefr / user.predicted) * 100);
+        // --- แก้ไข: คำนวณค่าเฉลี่ยจาก 5 รอบ ---
+        const sumPefr = allRounds.reduce((a, b) => a + b, 0);
+        const avgPefr = sumPefr / allRounds.length;
+        const percent = Math.round((avgPefr / user.predicted) * 100);
 
         document.getElementById('summary-data').innerHTML = `
             <b>ผู้ทดสอบ:</b> ${user.name}<br>
             <b>ข้อมูล:</b> เพศ ${user.gender}, อายุ ${user.age} ปี, สูง ${user.height} ซม.<br>
             <b>ค่ามาตรฐานของคุณ:</b> ${user.predicted} L/min<br><hr>
             ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
+            <hr>
+            <b>รวมทั้งหมด:</b> ${Math.round(sumPefr)} L/min<br>
+            <b>ค่าเฉลี่ยสรุป:</b> ${Math.round(avgPefr)} L/min
         `;
 
-        document.getElementById('final-avg').textContent = Math.round(bestPefr) + " L/min";
-        document.getElementById('final-percent').textContent = `คิดเป็น ${percent}% ของค่ามาตรฐาน`;
+        document.getElementById('final-avg').textContent = Math.round(avgPefr) + " L/min";
+        document.getElementById('final-percent').textContent = `คิดเป็น ${percent}% ของค่ามาตรฐาน (อิงจากค่าเฉลี่ย)`;
         
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
@@ -236,18 +236,19 @@
     }
 
     function exportToExcel() {
-        const bestPefr = Math.max(...allRounds);
-        const percent = Math.round((bestPefr / user.predicted) * 100);
+        const sumPefr = allRounds.reduce((a, b) => a + b, 0);
+        const avgPefr = sumPefr / allRounds.length;
+        const percent = Math.round((avgPefr / user.predicted) * 100);
         let status = percent >= 80 ? "ดีมาก" : (percent >= 50 ? "ปกติ" : "ควรพบแพทย์");
         
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,สูงสุดที่เป่าได้,เปอร์เซ็นต์,สรุปผล\n";
-        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(bestPefr)},${percent}%,${status}\n`;
+        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,ค่าเฉลี่ยที่เป่าได้,เปอร์เซ็นต์,สรุปผล\n";
+        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(avgPefr)},${percent}%,${status}\n`;
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `ผลตรวจปอด_${user.name}.csv`);
+        link.setAttribute("download", `ผลสรุปปอด_เฉลี่ย_${user.name}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
