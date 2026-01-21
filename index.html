@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Professional Export</title>
+  <title>Health Sensor App - Medical Version</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -43,7 +43,7 @@
     .btn-outline { background: #f1f5f9; color: #64748b; }
     
     .input-group { margin-bottom: 15px; text-align: left; }
-    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
+    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-family: 'Kanit'; }
     .hidden { display: none; }
     hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
   </style>
@@ -55,8 +55,11 @@
     <h1>Health Sensor App</h1>
     <div class="sub-title">ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</div>
     <div class="input-group"><label>ชื่อผู้ใช้งาน</label><input id="name" type="text" placeholder="ระบุชื่อ"></div>
-    <div class="input-group"><label>อายุ</label><input id="age" type="number" placeholder="ระบุอายุ"></div>
-    <div class="input-group"><label>เพศ</label><select id="gender"><option value="">เลือกเพศ</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number"></div>
+        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number"></div>
+    </div>
+    <div class="input-group"><label>เพศ</label><select id="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
     <button class="btn-start" onclick="initMicAndNextPage()">เข้าสู่การทดสอบ 🚀</button>
 </div>
 
@@ -78,12 +81,14 @@
 </div>
 
 <div class="container hidden" id="page3" style="text-align: center;">
-    <h1>📊 สรุปรายงาน</h1>
+    <h1>📊 สรุปรายงานการตรวจ</h1>
     <div id="summary-data" style="background:#f8fafc; padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
+        <div style="font-size: 14px; opacity: 0.8;">ค่าสูงสุดที่ทำได้</div>
         <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
-        <div id="final-status" style="font-size:18px; font-weight:600; margin-top: 5px;"></div>
+        <div id="final-percent" style="font-size:18px; font-weight:600; margin-bottom: 10px;"></div>
+        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); pt-2; margin-top:10px;"></div>
     </div>
 
     <button class="btn-excel" onclick="exportToExcel()">📊 ดาวน์โหลดไฟล์ Excel (.csv)</button>
@@ -96,14 +101,28 @@
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
     let silenceTimer, currentRoundMax = 0;
 
+    // สูตรทางการแพทย์ (Knudson)
+    function getPredictedPEFR(age, height, gender) {
+        if (gender === 'ชาย') {
+            return Math.round(((height / 100) * 5.48) + (age * 0.03) - 0.42 * 60);
+        } else {
+            return Math.round(((height / 100) * 3.72) + (age * 0.03) - 0.42 * 60);
+        }
+    }
+
     async function initMicAndNextPage() {
         const n = document.getElementById('name').value;
         const a = document.getElementById('age').value;
+        const h = document.getElementById('height').value;
         const g = document.getElementById('gender').value;
-        if (!n || !a || !g) return alert('กรุณากรอกข้อมูลให้ครบ');
+        
+        if (!n || !a || !h || !g) return alert('กรุณากรอกข้อมูลให้ครบ');
+        
         try {
             globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            user = { name: n, age: a, gender: g };
+            user = { name: n, age: parseInt(a), height: parseInt(h), gender: g };
+            user.predicted = getPredictedPEFR(user.age, user.height, user.gender);
+            
             document.getElementById('page1').classList.add('hidden');
             document.getElementById('page2').classList.remove('hidden');
         } catch (e) { alert('กรุณายอมรับการเข้าถึงไมโครโฟน'); }
@@ -184,31 +203,51 @@
     function showFinal() {
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
-        const avg = allRounds.reduce((a, b) => a + b, 0) / 5;
+        
+        // ทางการแพทย์ใช้ค่าที่ "ดีที่สุด" (Max) จาก 5 รอบ
+        const bestPefr = Math.max(...allRounds);
+        const percent = Math.round((bestPefr / user.predicted) * 100);
+
         document.getElementById('summary-data').innerHTML = `
-            <b>ผู้ทดสอบ:</b> ${user.name}<br><b>อายุ:</b> ${user.age} | <b>เพศ:</b> ${user.gender}<br><hr>
-            ${allRounds.map((v, i) => `รอบที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
+            <b>ผู้ทดสอบ:</b> ${user.name}<br>
+            <b>ข้อมูล:</b> เพศ ${user.gender}, อายุ ${user.age} ปี, สูง ${user.height} ซม.<br>
+            <b>ค่ามาตรฐานของคุณ:</b> ${user.predicted} L/min<br><hr>
+            ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
         `;
-        document.getElementById('final-avg').textContent = Math.round(avg) + " L/min";
+
+        document.getElementById('final-avg').textContent = Math.round(bestPefr) + " L/min";
+        document.getElementById('final-percent').textContent = `คิดเป็น ${percent}% ของค่ามาตรฐาน`;
+        
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
-        if(avg >= 400) { st.textContent = "เกณฑ์: ดีมาก 🌟"; card.style.background = "#dcfce7"; card.style.color = "#15803d"; }
-        else if(avg >= 300) { st.textContent = "เกณฑ์: ปกติ ✅"; card.style.background = "#fef3c7"; card.style.color = "#b45309"; }
-        else { st.textContent = "เกณฑ์: ควรปรับปรุง ⚠️"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; }
+
+        if(percent >= 80) { 
+            st.textContent = "ระดับ: ดีมาก (Green Zone) 🟢"; 
+            card.style.background = "#dcfce7"; card.style.color = "#15803d"; 
+        }
+        else if(percent >= 50) { 
+            st.textContent = "ระดับ: ปกติ/เฝ้าระวัง (Yellow Zone) 🟡"; 
+            card.style.background = "#fef3c7"; card.style.color = "#b45309"; 
+        }
+        else { 
+            st.textContent = "ระดับ: ควรพบแพทย์ (Red Zone) 🔴"; 
+            card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
+        }
     }
 
     function exportToExcel() {
-        const avg = allRounds.reduce((a, b) => a + b, 0) / 5;
-        let status = avg >= 400 ? "ดีมาก" : (avg >= 300 ? "ปกติ" : "ควรปรับปรุง");
+        const bestPefr = Math.max(...allRounds);
+        const percent = Math.round((bestPefr / user.predicted) * 100);
+        let status = percent >= 80 ? "ดีมาก" : (percent >= 50 ? "ปกติ" : "ควรพบแพทย์");
         
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for Thai support in Excel
-        csvContent += "ชื่อ,อายุ,เพศ,รอบที่ 1,รอบที่ 2,รอบที่ 3,รอบที่ 4,รอบที่ 5,ค่าเฉลี่ย,สรุปผล\n";
-        csvContent += `${user.name},${user.age},${user.gender},${allRounds.map(v=>Math.round(v)).join(",")},${Math.round(avg)},${status}\n`;
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,สูงสุดที่เป่าได้,เปอร์เซ็นต์,สรุปผล\n";
+        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(bestPefr)},${percent}%,${status}\n`;
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `ผลการวัด_${user.name}.csv`);
+        link.setAttribute("download", `ผลตรวจปอด_${user.name}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
