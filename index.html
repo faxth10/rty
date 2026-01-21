@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Professional Edition</title>
+  <title>Health Sensor App - Professional Export</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #1976d2;
-      --success: #2e7d32;
+      --success: #4caf50;
       --warning: #fbc02d;
-      --danger: #d32f2f;
+      --danger: #f44336;
       --bg: #f5f7fa;
     }
     body { font-family: "Kanit", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
@@ -19,25 +20,30 @@
     .sub-title { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 25px; }
     .round-tag { background: #e0f2fe; color: var(--primary); padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 15px; }
     
-    #status-display { padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; transition: 0.3s; border: 2px solid transparent; }
+    #status-display { padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; transition: 0.3s; }
     .status-idle { background: #f8fafc; color: #64748b; border: 2px dashed #e2e8f0; }
-    .status-active { background: #fff; border-color: var(--primary); transform: scale(1.02); }
+    .status-low { background: #fff9c4; color: #b45309; border: 2px solid #fef3c7; }
+    .status-good { background: #f0fdf4; color: #15803d; border: 2px solid #dcfce7; }
+    .status-high { background: #fef2f2; color: #b91c1c; border: 2px solid #fee2e2; }
 
-    .value-display { font-size: 64px; font-weight: 700; line-height: 1; margin: 10px 0; }
-    canvas { width: 100%; height: 100px; border-radius: 15px; background: #fdfdfd; margin: 15px 0; border: 1px solid #eee; }
+    .value-display { font-size: 56px; font-weight: 700; line-height: 1; margin: 10px 0; }
+    canvas { width: 100%; height: 100px; border-radius: 15px; background: #fdfdfd; margin: 15px 0; }
 
-    /* Zone Indicator Bar */
-    .zone-bar { height: 10px; display: flex; border-radius: 5px; overflow: hidden; margin: 20px 0; background: #eee; }
-    .z-seg { flex: 1; opacity: 0.2; transition: 0.3s; }
-    .active-z { opacity: 1; box-shadow: 0 0 8px rgba(0,0,0,0.2); }
+    .zone-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .zone-card { padding: 10px; border-radius: 12px; text-align: center; font-size: 11px; font-weight: 500; opacity: 0.4; transition: 0.3s; }
+    .zone-card.active { opacity: 1; transform: scale(1.05); }
+    .z-red { background: #fee2e2; color: #b91c1c; }
+    .z-green { background: #dcfce7; color: #15803d; }
+    .z-yellow { background: #fef3c7; color: #b45309; }
 
     button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
     .btn-start { background: var(--primary); color: white; }
+    .btn-excel { background: #2e7d32; color: white; }
     .btn-stop { background: var(--danger); color: white; }
     .btn-outline { background: #f1f5f9; color: #64748b; }
     
     .input-group { margin-bottom: 15px; text-align: left; }
-    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-family: 'Kanit'; }
+    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
     .hidden { display: none; }
     hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
   </style>
@@ -47,33 +53,28 @@
 <div class="container" id="page1">
     <center><img width="80px" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dh1EFfBVQyfw8WKTTaaqjwzfRXWzLyL6yw&s" alt="Logo"></center>
     <h1>Health Sensor App</h1>
-    <div class="sub-title">ระบบวิเคราะห์สมรรถภาพปอด (ชมรมโรงเรียนโนนสะอาดพิทยาสรรค์)</div>
+    <div class="sub-title">ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</div>
     <div class="input-group"><label>ชื่อผู้ใช้งาน</label><input id="name" type="text" placeholder="ระบุชื่อ"></div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" value="25"></div>
-        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" value="170"></div>
-    </div>
-    <div class="input-group"><label>เพศ</label><select id="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
-    <button class="btn-start" onclick="initApp()">เข้าสู่การทดสอบ 🚀</button>
+    <div class="input-group"><label>อายุ</label><input id="age" type="number" placeholder="ระบุอายุ"></div>
+    <div class="input-group"><label>เพศ</label><select id="gender"><option value="">เลือกเพศ</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+    <button class="btn-start" onclick="initMicAndNextPage()">เข้าสู่การทดสอบ 🚀</button>
 </div>
 
 <div class="container hidden" id="page2" style="text-align: center;">
     <div class="round-tag">รอบที่ <span id="roundNo">1</span> / 5</div>
     <div id="status-display" class="status-idle">
-        <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมแล้วกด "เริ่มเป่า"</div>
-        <div class="value-display" id="val-num">0</div>
-        <div style="font-size:14px; opacity:0.6">Liters per minute</div>
+        <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมสำหรับการทดสอบ</div>
+        <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
     </div>
-    
-    <div class="zone-bar">
-        <div id="z-r" class="z-seg" style="background:var(--danger); flex: 5;"></div>
-        <div id="z-y" class="z-seg" style="background:var(--warning); flex: 3;"></div>
-        <div id="z-g" class="z-seg" style="background:var(--success); flex: 2;"></div>
+    <div class="zone-container">
+        <div id="z-low" class="zone-card z-yellow">เบาไป<br>< 350</div>
+        <div id="z-good" class="zone-card z-green">กำลังดี<br>350-450</div>
+        <div id="z-high" class="zone-card z-red">แรงไป<br>> 450</div>
     </div>
-
     <canvas id="graphCanvas"></canvas>
-    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่า</button>
-    <button id="stopBtn" class="btn-stop hidden" onclick="confirmValue()">⏹️ บันทึกค่านี้</button>
+    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่ารอบนี้</button>
+    <button id="stopBtn" class="btn-stop hidden" onclick="stopTestRound()">⏹️ หยุดการวัด</button>
+    <button class="btn-outline" style="font-size: 14px;" onclick="location.reload()">🔙 ยกเลิกและกลับหน้าหลัก</button>
 </div>
 
 <div class="container hidden" id="page3" style="text-align: center;">
@@ -81,126 +82,136 @@
     <div id="summary-data" style="background:#f8fafc; padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
-        <div style="font-size: 14px; opacity: 0.7;">ค่าสูงสุดที่เป่าได้ (Best Effort)</div>
-        <div id="final-best" style="font-size:54px; font-weight:700;">0</div>
-        <div id="final-status" style="font-size:18px; font-weight:600; margin-top: 10px;"></div>
+        <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
+        <div id="final-status" style="font-size:18px; font-weight:600; margin-top: 5px;"></div>
     </div>
 
+    <button class="btn-excel" onclick="exportToExcel()">📊 ดาวน์โหลดไฟล์ Excel (.csv)</button>
     <button class="btn-start" onclick="window.print()">💾 พิมพ์รายงาน (PDF)</button>
     <button class="btn-outline" onclick="location.reload()">🔄 เริ่มทดสอบใหม่</button>
 </div>
 
 <script>
     let user = {}, round = 0, allRounds = [], isMeasuring = false;
-    let audioCtx, analyser, dataArray, stream, animationId;
-    let currentDisp = 0, currentPeak = 0;
+    let audioContext, analyser, microphone, dataArray, animationId, globalStream;
+    let silenceTimer, currentRoundMax = 0;
 
-    async function initApp() {
+    async function initMicAndNextPage() {
         const n = document.getElementById('name').value;
-        if (!n) return alert('กรุณากรอกชื่อ');
-        
-        user = {
-            name: n,
-            age: parseInt(document.getElementById('age').value),
-            height: parseInt(document.getElementById('height').value),
-            gender: document.getElementById('gender').value
-        };
-        
-        // สูตร Gregg and Nunn เพื่อหาค่ามาตรฐาน (Predicted)
-        user.pred = user.gender === 'ชาย' 
-            ? Math.round(((user.height/100 * 5.48) - (user.age * 0.031) - 0.42) * 60)
-            : Math.round(((user.height/100 * 3.72) - (user.age * 0.031) - 0.42) * 60);
-
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        document.getElementById('page1').classList.add('hidden');
-        document.getElementById('page2').classList.remove('hidden');
+        const a = document.getElementById('age').value;
+        const g = document.getElementById('gender').value;
+        if (!n || !a || !g) return alert('กรุณากรอกข้อมูลให้ครบ');
+        try {
+            globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            user = { name: n, age: a, gender: g };
+            document.getElementById('page1').classList.add('hidden');
+            document.getElementById('page2').classList.remove('hidden');
+        } catch (e) { alert('กรุณายอมรับการเข้าถึงไมโครโฟน'); }
     }
 
     async function startTestRound() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.7; 
-            audioCtx.createMediaStreamSource(stream).connect(analyser);
+        if (round >= 5) return;
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            microphone = audioContext.createMediaStreamSource(globalStream);
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.8;
             dataArray = new Uint8Array(analyser.frequencyBinCount);
+            microphone.connect(analyser);
         }
+        if (audioContext.state === 'suspended') await audioContext.resume();
         round++;
-        currentPeak = 0;
+        currentRoundMax = 0;
         document.getElementById('roundNo').textContent = round;
         document.getElementById('startBtn').classList.add('hidden');
         document.getElementById('stopBtn').classList.remove('hidden');
-        document.getElementById('status-display').className = "status-active";
-        document.getElementById('status-text').textContent = "เป่าแรงๆ ทันที!";
         isMeasuring = true;
-        updateLoop();
+        runLoop();
     }
 
-    function updateLoop() {
-        if (!isMeasuring) return;
+    function runLoop() {
         const canvas = document.getElementById('graphCanvas');
         const ctx = canvas.getContext('2d');
-        
-        analyser.getByteFrequencyData(dataArray);
-        let vol = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        
-        // ปรับจูนตัวเลขให้นิ่ง (Smoothing)
-        let target = Math.min(850, vol * 24.0);
-        currentDisp += (target - currentDisp) * 0.15; // ตัวหน่วงให้นุ่มนวล
-        
-        if (currentDisp > currentPeak) currentPeak = currentDisp;
+        const statusDisplay = document.getElementById('status-display');
+        const statusText = document.getElementById('status-text');
 
-        document.getElementById('val-num').textContent = Math.round(currentDisp);
-        
-        // อัปเดตแถบสี Zone
-        let pct = (currentDisp / user.pred) * 100;
-        document.getElementById('z-r').classList.toggle('active-z', pct < 50 && currentDisp > 20);
-        document.getElementById('z-y').classList.toggle('active-z', pct >= 50 && pct < 80);
-        document.getElementById('z-g').classList.toggle('active-z', pct >= 80);
+        function draw() {
+            if (!isMeasuring) return;
+            analyser.getByteFrequencyData(dataArray);
+            let avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+            let pefr = Math.min(800, avg * 8.5); 
+            if (pefr > currentRoundMax) currentRoundMax = pefr;
 
-        // วาดกราฟ
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#e3f2fd';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'var(--primary)';
-        ctx.fillRect(0, canvas.height, canvas.width, -(currentDisp/850 * canvas.height));
+            if (pefr > 40) {
+                clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(stopTestRound, 1700);
+            }
 
-        animationId = requestAnimationFrame(updateLoop);
+            document.getElementById('val-num').textContent = Math.round(pefr);
+            document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
+            if (pefr > 450) {
+                statusDisplay.className = "status-high"; statusText.textContent = "แรงเกินไป!";
+                document.getElementById('z-high').classList.add('active');
+            } else if (pefr >= 350) {
+                statusDisplay.className = "status-good"; statusText.textContent = "กำลังดี";
+                document.getElementById('z-good').classList.add('active');
+            } else if (pefr > 40) {
+                statusDisplay.className = "status-low"; statusText.textContent = "เบาเกินไป";
+                document.getElementById('z-low').classList.add('active');
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = pefr > 450 ? '#f44336' : (pefr >= 350 ? '#4caf50' : '#fbc02d');
+            ctx.fillRect(0, canvas.height, canvas.width, -(pefr/800 * canvas.height));
+            animationId = requestAnimationFrame(draw);
+        }
+        draw();
     }
 
-    function confirmValue() {
+    function stopTestRound() {
         isMeasuring = false;
+        clearTimeout(silenceTimer);
         cancelAnimationFrame(animationId);
-        allRounds.push(currentPeak);
+        allRounds.push(currentRoundMax);
         document.getElementById('startBtn').classList.remove('hidden');
         document.getElementById('stopBtn').classList.add('hidden');
         document.getElementById('status-display').className = "status-idle";
-        document.getElementById('status-text').textContent = "บันทึกค่าแล้ว";
-        
-        if (round >= 5) showFinal();
+        document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " แล้ว";
+        if (round >= 5) setTimeout(showFinal, 800);
     }
 
     function showFinal() {
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
-        
-        const best = Math.max(...allRounds);
-        const pct = Math.round((best / user.pred) * 100);
-
+        const avg = allRounds.reduce((a, b) => a + b, 0) / 5;
         document.getElementById('summary-data').innerHTML = `
-            <b>ผู้ทดสอบ:</b> ${user.name}<br>
-            <b>ข้อมูล:</b> อายุ ${user.age} ปี | ส่วนสูง ${user.height} ซม.<br>
-            <b>ค่ามาตรฐานของคุณ:</b> ${user.pred} L/min<hr>
+            <b>ผู้ทดสอบ:</b> ${user.name}<br><b>อายุ:</b> ${user.age} | <b>เพศ:</b> ${user.gender}<br><hr>
             ${allRounds.map((v, i) => `รอบที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
         `;
-        
-        document.getElementById('final-best').textContent = Math.round(best) + " L/min";
+        document.getElementById('final-avg').textContent = Math.round(avg) + " L/min";
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
+        if(avg >= 400) { st.textContent = "เกณฑ์: ดีมาก 🌟"; card.style.background = "#dcfce7"; card.style.color = "#15803d"; }
+        else if(avg >= 300) { st.textContent = "เกณฑ์: ปกติ ✅"; card.style.background = "#fef3c7"; card.style.color = "#b45309"; }
+        else { st.textContent = "เกณฑ์: ควรปรับปรุง ⚠️"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; }
+    }
+
+    function exportToExcel() {
+        const avg = allRounds.reduce((a, b) => a + b, 0) / 5;
+        let status = avg >= 400 ? "ดีมาก" : (avg >= 300 ? "ปกติ" : "ควรปรับปรุง");
         
-        if(pct >= 80) { st.textContent = "เกณฑ์: ปกติ (Green Zone) ✅"; card.style.background = "#dcfce7"; card.style.color = "#15803d"; }
-        else if(pct >= 50) { st.textContent = "เกณฑ์: เฝ้าระวัง (Yellow Zone) ⚠️"; card.style.background = "#fffbeb"; card.style.color = "#b45309"; }
-        else { st.textContent = "เกณฑ์: ควรพบแพทย์ (Red Zone) 🚨"; card.style.background = "#fef2f2"; card.style.color = "#b91c1c"; }
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for Thai support in Excel
+        csvContent += "ชื่อ,อายุ,เพศ,รอบที่ 1,รอบที่ 2,รอบที่ 3,รอบที่ 4,รอบที่ 5,ค่าเฉลี่ย,สรุปผล\n";
+        csvContent += `${user.name},${user.age},${user.gender},${allRounds.map(v=>Math.round(v)).join(",")},${Math.round(avg)},${status}\n`;
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `ผลการวัด_${user.name}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 </body>
