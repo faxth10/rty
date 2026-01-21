@@ -38,6 +38,7 @@
 
     button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
     .btn-start { background: var(--primary); color: white; }
+    .btn-excel { background: #2e7d32; color: white; }
     .btn-stop { background: var(--danger); color: white; }
     .btn-outline { background: #f1f5f9; color: #64748b; }
     
@@ -87,9 +88,10 @@
         <div style="font-size: 14px; opacity: 0.8;">ค่าสูงสุดที่ทำได้</div>
         <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
         <div id="final-percent" style="font-size:18px; font-weight:600; margin-bottom: 10px;"></div>
-        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:10px; margin-top:10px;"></div>
+        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); pt-2; margin-top:10px;"></div>
     </div>
 
+    <button class="btn-excel" onclick="exportToExcel()">📊 ดาวน์โหลดไฟล์ Excel (.csv)</button>
     <button class="btn-start" onclick="window.print()">💾 พิมพ์รายงาน (PDF)</button>
     <button class="btn-outline" onclick="location.reload()">🔄 เริ่มทดสอบใหม่</button>
 </div>
@@ -202,6 +204,7 @@
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
         
+        // ทางการแพทย์ใช้ค่าที่ "ดีที่สุด" (Max) จาก 5 รอบ
         const bestPefr = Math.max(...allRounds);
         const percent = Math.round((bestPefr / user.predicted) * 100);
 
@@ -230,6 +233,24 @@
             st.textContent = "ระดับ: ควรพบแพทย์ (Red Zone) 🔴"; 
             card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
         }
+    }
+
+    function exportToExcel() {
+        const bestPefr = Math.max(...allRounds);
+        const percent = Math.round((bestPefr / user.predicted) * 100);
+        let status = percent >= 80 ? "ดีมาก" : (percent >= 50 ? "ปกติ" : "ควรพบแพทย์");
+        
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,สูงสุดที่เป่าได้,เปอร์เซ็นต์,สรุปผล\n";
+        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(bestPefr)},${percent}%,${status}\n`;
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `ผลตรวจปอด_${user.name}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 </body>
