@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Medical Version</title>
+  <title>Health Sensor App - L/min Version</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -85,9 +85,9 @@
     <div id="summary-data" style="background:#f8fafc; padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
-        <div style="font-size: 14px; opacity: 0.8;">ค่าเฉลี่ยรวม 5 ครั้ง</div>
+        <div style="font-size: 14px; opacity: 0.8;">ค่าเฉลี่ยสมรรถภาพปอด</div>
         <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
-        <div id="final-percent" style="font-size:18px; font-weight:600; margin-bottom: 10px;"></div>
+        <div id="final-target" style="font-size:16px; margin-bottom: 10px; color: #64748b;"></div>
         <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:10px; margin-top:10px;"></div>
     </div>
 
@@ -200,37 +200,37 @@
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
         
-        // --- แก้ไข: คำนวณค่าเฉลี่ยจาก 5 รอบ ---
         const sumPefr = allRounds.reduce((a, b) => a + b, 0);
         const avgPefr = sumPefr / allRounds.length;
-        const percent = Math.round((avgPefr / user.predicted) * 100);
+        
+        // คำนวณขีดจำกัดหน่วย L/min แทนการใช้ % โดยตรงในหน้าจอ
+        const greenLimit = Math.round(user.predicted * 0.8);
+        const yellowLimit = Math.round(user.predicted * 0.5);
 
         document.getElementById('summary-data').innerHTML = `
             <b>ผู้ทดสอบ:</b> ${user.name}<br>
-            <b>ข้อมูล:</b> เพศ ${user.gender}, อายุ ${user.age} ปี, สูง ${user.height} ซม.<br>
-            <b>ค่ามาตรฐานของคุณ:</b> ${user.predicted} L/min<br><hr>
+            <b>ข้อมูลส่วนตัว:</b> ${user.gender}, ${user.age} ปี, ${user.height} ซม.<br>
+            <b>ค่ามาตรฐานที่ควรได้:</b> ${user.predicted} L/min<br><hr>
             ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
-            <hr>
-            <b>รวมทั้งหมด:</b> ${Math.round(sumPefr)} L/min<br>
-            <b>ค่าเฉลี่ยสรุป:</b> ${Math.round(avgPefr)} L/min
         `;
 
         document.getElementById('final-avg').textContent = Math.round(avgPefr) + " L/min";
-        document.getElementById('final-percent').textContent = `คิดเป็น ${percent}% ของค่ามาตรฐาน (อิงจากค่าเฉลี่ย)`;
+        document.getElementById('final-target').textContent = `(ค่ามาตรฐานสำหรับคุณคือ ${user.predicted} L/min)`;
         
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
 
-        if(percent >= 80) { 
-            st.textContent = "ระดับ: ดีมาก (Green Zone) 🟢"; 
+        // ตัดสินผลด้วยหน่วยตัวเลข
+        if(avgPefr >= greenLimit) { 
+            st.textContent = "ผลตรวจ: ปกติ (Green Zone) 🟢"; 
             card.style.background = "#dcfce7"; card.style.color = "#15803d"; 
         }
-        else if(percent >= 50) { 
-            st.textContent = "ระดับ: ปกติ/เฝ้าระวัง (Yellow Zone) 🟡"; 
+        else if(avgPefr >= yellowLimit) { 
+            st.textContent = "ผลตรวจ: เฝ้าระวัง (Yellow Zone) 🟡"; 
             card.style.background = "#fef3c7"; card.style.color = "#b45309"; 
         }
         else { 
-            st.textContent = "ระดับ: ควรพบแพทย์ (Red Zone) 🔴"; 
+            st.textContent = "ผลตรวจ: ต่ำกว่าเกณฑ์ (Red Zone) 🔴"; 
             card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
         }
     }
@@ -238,17 +238,18 @@
     function exportToExcel() {
         const sumPefr = allRounds.reduce((a, b) => a + b, 0);
         const avgPefr = sumPefr / allRounds.length;
-        const percent = Math.round((avgPefr / user.predicted) * 100);
-        let status = percent >= 80 ? "ดีมาก" : (percent >= 50 ? "ปกติ" : "ควรพบแพทย์");
+        const greenLimit = user.predicted * 0.8;
+        const yellowLimit = user.predicted * 0.5;
+        let status = avgPefr >= greenLimit ? "ปกติ" : (avgPefr >= yellowLimit ? "เฝ้าระวัง" : "ควรพบแพทย์");
         
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,ค่าเฉลี่ยที่เป่าได้,เปอร์เซ็นต์,สรุปผล\n";
-        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(avgPefr)},${percent}%,${status}\n`;
+        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,ค่าเฉลี่ยที่ได้,สถานะ\n";
+        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(avgPefr)},${status}\n`;
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `ผลสรุปปอด_เฉลี่ย_${user.name}.csv`);
+        link.setAttribute("download", `รายงานปอด_${user.name}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
