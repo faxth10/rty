@@ -38,7 +38,6 @@
 
     button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
     .btn-start { background: var(--primary); color: white; }
-    .btn-excel { background: #2e7d32; color: white; }
     .btn-stop { background: var(--danger); color: white; }
     .btn-outline { background: #f1f5f9; color: #64748b; }
     
@@ -91,7 +90,6 @@
         <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:10px; margin-top:10px;"></div>
     </div>
 
-    <button class="btn-excel" onclick="exportToExcel()">📊 ดาวน์โหลดไฟล์ Excel (.csv)</button>
     <button class="btn-start" onclick="window.print()">💾 พิมพ์รายงาน (PDF)</button>
     <button class="btn-outline" onclick="location.reload()">🔄 เริ่มทดสอบใหม่</button>
 </div>
@@ -203,7 +201,6 @@
         const sumPefr = allRounds.reduce((a, b) => a + b, 0);
         const avgPefr = sumPefr / allRounds.length;
         
-        // คำนวณขีดจำกัดหน่วย L/min แทนการใช้ % โดยตรงในหน้าจอ
         const greenLimit = Math.round(user.predicted * 0.8);
         const yellowLimit = Math.round(user.predicted * 0.5);
 
@@ -215,12 +212,11 @@
         `;
 
         document.getElementById('final-avg').textContent = Math.round(avgPefr) + " L/min";
-        document.getElementById('final-target').textContent = `(ค่ามาตรฐานสำหรับคุณคือ ${user.predicted} L/min)`;
+        document.getElementById('final-target').textContent = `(ค่าเป้าหมายสำหรับคุณคือ ${user.predicted} L/min)`;
         
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
 
-        // ตัดสินผลด้วยหน่วยตัวเลข
         if(avgPefr >= greenLimit) { 
             st.textContent = "ผลตรวจ: ปกติ (Green Zone) 🟢"; 
             card.style.background = "#dcfce7"; card.style.color = "#15803d"; 
@@ -233,26 +229,6 @@
             st.textContent = "ผลตรวจ: ต่ำกว่าเกณฑ์ (Red Zone) 🔴"; 
             card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
         }
-    }
-
-    function exportToExcel() {
-        const sumPefr = allRounds.reduce((a, b) => a + b, 0);
-        const avgPefr = sumPefr / allRounds.length;
-        const greenLimit = user.predicted * 0.8;
-        const yellowLimit = user.predicted * 0.5;
-        let status = avgPefr >= greenLimit ? "ปกติ" : (avgPefr >= yellowLimit ? "เฝ้าระวัง" : "ควรพบแพทย์");
-        
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "ชื่อ,อายุ,ส่วนสูง,เพศ,ค่ามาตรฐาน,ค่าเฉลี่ยที่ได้,สถานะ\n";
-        csvContent += `${user.name},${user.age},${user.height},${user.gender},${user.predicted},${Math.round(avgPefr)},${status}\n`;
-        
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `รายงานปอด_${user.name}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     }
 </script>
 </body>
