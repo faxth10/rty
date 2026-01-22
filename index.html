@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - L/min Version</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <title>Health Sensor App - Professional Version</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -20,13 +19,14 @@
     .sub-title { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 25px; }
     .round-tag { background: #e0f2fe; color: var(--primary); padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 15px; }
     
-    #status-display { padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; transition: 0.3s; }
+    #status-display { padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; transition: 0.3s; position: relative;}
     .status-idle { background: #f8fafc; color: #64748b; border: 2px dashed #e2e8f0; }
     .status-low { background: #fff9c4; color: #b45309; border: 2px solid #fef3c7; }
     .status-good { background: #f0fdf4; color: #15803d; border: 2px solid #dcfce7; }
     .status-high { background: #fef2f2; color: #b91c1c; border: 2px solid #fee2e2; }
 
     .value-display { font-size: 56px; font-weight: 700; line-height: 1; margin: 10px 0; }
+    .timer-display { font-size: 18px; font-weight: 500; color: #64748b; margin-top: 5px; }
     canvas { width: 100%; height: 100px; border-radius: 15px; background: #fdfdfd; margin: 15px 0; }
 
     .zone-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
@@ -67,6 +67,7 @@
     <div id="status-display" class="status-idle">
         <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมสำหรับการทดสอบ</div>
         <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
+        <div class="timer-display">เวลาเป่า: <span id="current-timer">0.00</span> วินาที</div>
     </div>
     <div class="zone-container">
         <div id="z-low" class="zone-card z-yellow">เบาไป<br>< 350</div>
@@ -84,10 +85,10 @@
     <div id="summary-data" style="background:#f8fafc; padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
-        <div style="font-size: 14px; opacity: 0.8;">ค่าเฉลี่ยสมรรถภาพปอด</div>
-        <div id="final-avg" style="font-size:48px; font-weight:700;">0</div>
-        <div id="final-target" style="font-size:16px; margin-bottom: 10px; color: #64748b;"></div>
-        <div id="final-status" style="font-size:20px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:10px; margin-top:10px;"></div>
+        <div style="font-size: 14px; opacity: 0.8;">ความแรงเฉลี่ย: <span id="final-avg-val">0</span> L/min</div>
+        <div id="final-avg-duration" style="font-size:14px; opacity: 0.8; margin-bottom:10px;">เวลาเป่าเฉลี่ย: 0.00 วินาที</div>
+        <div id="final-status" style="font-size:22px; font-weight:700; border-top: 1px solid rgba(0,0,0,0.1); padding-top:15px; margin-top:10px;"></div>
+        <div id="final-advice" style="font-size:14px; margin-top:8px; line-height:1.4;"></div>
     </div>
 
     <button class="btn-start" onclick="window.print()">💾 พิมพ์รายงาน (PDF)</button>
@@ -95,9 +96,9 @@
 </div>
 
 <script>
-    let user = {}, round = 0, allRounds = [], isMeasuring = false;
+    let user = {}, round = 0, allRounds = [], allDurations = [], isMeasuring = false;
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
-    let silenceTimer, currentRoundMax = 0;
+    let silenceTimer, currentRoundMax = 0, startTime = 0, roundDuration = 0;
 
     function getPredictedPEFR(age, height, gender) {
         if (gender === 'ชาย') {
@@ -136,9 +137,12 @@
         if (audioContext.state === 'suspended') await audioContext.resume();
         round++;
         currentRoundMax = 0;
+        roundDuration = 0;
+        startTime = 0; // Reset start time for the actual blow
         document.getElementById('roundNo').textContent = round;
         document.getElementById('startBtn').classList.add('hidden');
         document.getElementById('stopBtn').classList.remove('hidden');
+        document.getElementById('current-timer').textContent = "0.00";
         isMeasuring = true;
         runLoop();
     }
@@ -154,23 +158,28 @@
             analyser.getByteFrequencyData(dataArray);
             let avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
             let pefr = Math.min(800, avg * 8.5); 
-            if (pefr > currentRoundMax) currentRoundMax = pefr;
-
+            
             if (pefr > 40) {
+                if (startTime === 0) startTime = Date.now();
+                roundDuration = (Date.now() - startTime) / 1000;
+                document.getElementById('current-timer').textContent = roundDuration.toFixed(2);
+                
+                if (pefr > currentRoundMax) currentRoundMax = pefr;
                 clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(stopTestRound, 1700);
+                silenceTimer = setTimeout(stopTestRound, 1500);
             }
 
             document.getElementById('val-num').textContent = Math.round(pefr);
             document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
+            
             if (pefr > 450) {
-                statusDisplay.className = "status-high"; statusText.textContent = "แรงเกินไป!";
+                statusDisplay.className = "status-high"; statusText.textContent = "แรงดีมาก!";
                 document.getElementById('z-high').classList.add('active');
             } else if (pefr >= 350) {
                 statusDisplay.className = "status-good"; statusText.textContent = "กำลังดี";
                 document.getElementById('z-good').classList.add('active');
             } else if (pefr > 40) {
-                statusDisplay.className = "status-low"; statusText.textContent = "เบาเกินไป";
+                statusDisplay.className = "status-low"; statusText.textContent = "เป่าแรงอีกนิด";
                 document.getElementById('z-low').classList.add('active');
             }
 
@@ -187,10 +196,13 @@
         clearTimeout(silenceTimer);
         cancelAnimationFrame(animationId);
         allRounds.push(currentRoundMax);
+        allDurations.push(roundDuration);
+        
         document.getElementById('startBtn').classList.remove('hidden');
         document.getElementById('stopBtn').classList.add('hidden');
         document.getElementById('status-display').className = "status-idle";
-        document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " แล้ว";
+        document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " สำเร็จ";
+        
         if (round >= 5) setTimeout(showFinal, 800);
     }
 
@@ -198,36 +210,45 @@
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
         
-        const sumPefr = allRounds.reduce((a, b) => a + b, 0);
-        const avgPefr = sumPefr / allRounds.length;
-        
-        const greenLimit = Math.round(user.predicted * 0.8);
-        const yellowLimit = Math.round(user.predicted * 0.5);
+        const avgPefr = allRounds.reduce((a, b) => a + b, 0) / allRounds.length;
+        const avgDur = allDurations.reduce((a, b) => a + b, 0) / allDurations.length;
+        const scoreRatio = avgPefr / user.predicted;
 
         document.getElementById('summary-data').innerHTML = `
-            <b>ผู้ทดสอบ:</b> ${user.name}<br>
-            <b>ข้อมูลส่วนตัว:</b> ${user.gender}, ${user.age} ปี, ${user.height} ซม.<br>
-            <b>ค่ามาตรฐานที่ควรได้:</b> ${user.predicted} L/min<br><hr>
-            ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
+            <b>ผู้ทดสอบ:</b> ${user.name} (${user.gender})<br>
+            <b>อายุ:</b> ${user.age} ปี | <b>ส่วนสูง:</b> ${user.height} ซม.<br>
+            <b>ค่ามาตรฐานปอด:</b> ${user.predicted} L/min<br><hr>
+            ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min (เวลา ${allDurations[i].toFixed(2)} วินาที)`).join('<br>')}
         `;
 
-        document.getElementById('final-avg').textContent = Math.round(avgPefr) + " L/min";
-        document.getElementById('final-target').textContent = `(ค่าเป้าหมายสำหรับคุณคือ ${user.predicted} L/min)`;
+        document.getElementById('final-avg-val').textContent = Math.round(avgPefr);
+        document.getElementById('final-avg-duration').textContent = `เวลาเป่าเฉลี่ย: ${avgDur.toFixed(2)} วินาที`;
         
         const st = document.getElementById('final-status');
+        const adv = document.getElementById('final-advice');
         const card = document.getElementById('final-card');
 
-        if(avgPefr >= greenLimit) { 
-            st.textContent = "ผลตรวจ: ปกติ (Green Zone) 🟢"; 
-            card.style.background = "#dcfce7"; card.style.color = "#15803d"; 
-        }
-        else if(avgPefr >= yellowLimit) { 
-            st.textContent = "ผลตรวจ: เฝ้าระวัง (Yellow Zone) 🟡"; 
-            card.style.background = "#fef3c7"; card.style.color = "#b45309"; 
-        }
-        else { 
-            st.textContent = "ผลตรวจ: ต่ำกว่าเกณฑ์ (Red Zone) 🔴"; 
-            card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
+        // การประเมินผลที่ละเอียดและเสถียรขึ้น
+        if (scoreRatio >= 0.9 && avgDur >= 2.0) {
+            st.textContent = "ดีเยี่ยม (Excellent) 🟢✨";
+            adv.textContent = "สมรรถภาพปอดแข็งแรงมาก ทั้งความแรงและระยะเวลาเป่าอยู่ในเกณฑ์ยอดเยี่ยม";
+            card.style.background = "#dcfce7"; card.style.color = "#15803d";
+        } else if (scoreRatio >= 0.8) {
+            st.textContent = "ปกติ (Good) 🟢";
+            adv.textContent = "สมรรถภาพปอดอยู่ในเกณฑ์ปกติ ควรออกกำลังกายสม่ำเสมอเพื่อรักษาความแข็งแรง";
+            card.style.background = "#f0fdf4"; card.style.color = "#166534";
+        } else if (scoreRatio >= 0.6) {
+            st.textContent = "เฝ้าระวัง (Fair/Caution) 🟡";
+            adv.textContent = "ค่าความแรงเริ่มต่ำกว่าเกณฑ์มาตรฐานเล็กน้อย หรือระยะเวลาเป่าสั้นไป ควรฝึกหายใจและออกกำลังกายแบบคาร์ดิโอ";
+            card.style.background = "#fef3c7"; card.style.color = "#92400e";
+        } else if (scoreRatio >= 0.4) {
+            st.textContent = "เริ่มอ่อนแอ (Weak) 🟠";
+            adv.textContent = "สมรรถภาพปอดต่ำกว่ามาตรฐานอย่างเห็นได้ชัด หากมีอาการเหนื่อยง่ายร่วมด้วยควรปรึกษาผู้เชี่ยวชาญ";
+            card.style.background = "#ffedd5"; card.style.color = "#9a3412";
+        } else {
+            st.textContent = "ควรพบแพทย์ (Urgent) 🔴";
+            adv.textContent = "ค่าที่วัดได้ต่ำกว่าเกณฑ์มาก แนะนำให้รับการตรวจสมรรถภาพปอดอย่างละเอียดที่โรงพยาบาล";
+            card.style.background = "#fee2e2"; card.style.color = "#b91c1c";
         }
     }
 </script>
