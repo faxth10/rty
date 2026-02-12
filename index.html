@@ -3,15 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Expert Advice</title>
+  <title>Health Sensor App - Professional Final</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #1976d2;
-      --success: #4caf50;
-      --warning: #fbc02d;
-      --danger: #f44336;
-      --bg: #f5f7fa;
+      --primary: #1976d2; --success: #4caf50; --warning: #fbc02d; --danger: #f44336; --bg: #f5f7fa;
     }
     body { font-family: "Kanit", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
     .container { max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; }
@@ -25,7 +21,7 @@
     .sub-title { text-align: center; color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
     .round-tag { background: rgba(25, 118, 210, 0.1); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 15px; }
     
-    .value-display { font-size: 64px; font-weight: 700; line-height: 1; margin: 10px 0; }
+    .value-display { font-size: 64px; font-weight: 700; line-height: 1; margin: 10px 0; font-variant-numeric: tabular-nums; }
     canvas { width: 100%; height: 80px; border-radius: 15px; background: rgba(0,0,0,0.03); margin: 15px 0; }
 
     button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
@@ -37,9 +33,8 @@
     input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-family: 'Kanit'; }
     .hidden { display: none; }
 
-    /* Advice Box */
     #advice-box { text-align: left; padding: 15px; border-radius: 15px; margin-top: 15px; font-size: 14px; line-height: 1.6; }
-    .advice-title { font-weight: 600; font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; }
+    .advice-title { font-weight: 600; font-size: 16px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -58,11 +53,12 @@
 </div>
 
 <div class="container" id="page2" style="text-align: center; display: none;">
+    <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:10px; font-size:12px; margin-bottom:10px;">📏 รักษาระยะห่างจากปาก <b>5 - 10 ซม.</b></div>
     <div class="round-tag">รอบที่ <span id="roundNo">1</span> / 5</div>
     <div id="status-display">
         <div id="status-text" style="font-size: 18px; font-weight: 600;">รอกระแสลม...</div>
         <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
-        <div style="font-size: 18px; font-weight: 500;">⏱ <span id="current-timer">0.00</span> วินาที</div>
+        <div style="font-size: 18px;">⏱ <span id="current-timer">0.00</span> วินาที</div>
     </div>
     <canvas id="graphCanvas"></canvas>
     <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่า</button>
@@ -78,20 +74,17 @@
         <div style="font-size: 14px; margin: 5px 0;">ค่าเฉลี่ย: <span id="final-avg-val">0</span> L/min</div>
         <div id="final-avg-duration" style="font-size:14px; opacity: 0.8;"></div>
     </div>
-
     <div id="advice-box"></div>
-
     <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
-    <button class="btn-start" onclick="window.print()">💾 พิมพ์ผลการทดสอบ</button>
+    <button class="btn-start" onclick="window.print()">💾 บันทึกผล (PDF)</button>
     <button class="btn-outline" onclick="location.reload()">🔄 เริ่มใหม่</button>
 </div>
 
 <script>
     let user = {}, round = 0, allRounds = [], allDurations = [], isMeasuring = false;
-    let audioContext, analyser, microphone, dataArray, animationId, globalStream;
-    let silenceTimer, currentRoundMax = 0, startTime = 0, roundDuration = 0;
-    let smoothedValue = 0;
-    const smoothingFactor = 0.2;
+    let audioContext, analyser, microphone, lowpassFilter, dataArray, animationId, globalStream;
+    let silenceTimer, currentRoundMax = 0, startTime = 0, roundDuration = 0, smoothedValue = 0;
+    const smoothingFactor = 0.18;
 
     function getPredictedPEFR(age, height, gender) {
         let base = (gender === 'ชาย') ? ((height - 100) * 5 + 100) : ((height - 100) * 4 + 50);
@@ -99,13 +92,10 @@
     }
 
     async function initMicAndNextPage() {
-        const n = document.getElementById('name').value;
-        const a = document.getElementById('age').value;
-        const h = document.getElementById('height').value;
-        const g = document.getElementById('gender').value;
-        if (!n || !a || !h || !g) return alert('กรุณากรอกข้อมูล');
+        const n = document.getElementById('name').value, a = document.getElementById('age').value, h = document.getElementById('height').value, g = document.getElementById('gender').value;
+        if (!n || !a || !h || !g) return alert('กรุณากรอกข้อมูลให้ครบ');
         try {
-            globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            globalStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
             user = { name: n, age: parseInt(a), height: parseInt(h), gender: g };
             user.predicted = getPredictedPEFR(user.age, user.height, user.gender);
             document.getElementById('page1').style.display = 'none';
@@ -119,9 +109,13 @@
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
             microphone = audioContext.createMediaStreamSource(globalStream);
+            lowpassFilter = audioContext.createBiquadFilter();
+            lowpassFilter.type = "lowpass";
+            lowpassFilter.frequency.value = 450; // ตัดเสียงแหลม เน้นเสียงลมเป่า
+            microphone.connect(lowpassFilter);
+            lowpassFilter.connect(analyser);
             analyser.fftSize = 1024;
             dataArray = new Uint8Array(analyser.frequencyBinCount);
-            microphone.connect(analyser);
         }
         round++;
         currentRoundMax = 0; roundDuration = 0; startTime = 0; smoothedValue = 0;
@@ -134,20 +128,16 @@
     }
 
     function runLoop() {
-        const canvas = document.getElementById('graphCanvas');
-        const ctx = canvas.getContext('2d');
-        const pageContainer = document.getElementById('page2');
-        const statusText = document.getElementById('status-text');
-
+        const canvas = document.getElementById('graphCanvas'), ctx = canvas.getContext('2d'), pageContainer = document.getElementById('page2'), statusText = document.getElementById('status-text');
         function draw() {
             if (!isMeasuring) return;
             analyser.getByteFrequencyData(dataArray);
             let avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-            let rawPefr = Math.min(900, avg * 7.5); 
+            let rawPefr = Math.min(900, avg * 7.8); 
             smoothedValue = (rawPefr * smoothingFactor) + (smoothedValue * (1 - smoothingFactor));
             let displayValue = smoothedValue < 25 ? 0 : smoothedValue;
 
-            if (displayValue > 35) {
+            if (displayValue > 30) {
                 if (startTime === 0) startTime = Date.now();
                 roundDuration = (Date.now() - startTime) / 1000;
                 document.getElementById('current-timer').textContent = roundDuration.toFixed(2);
@@ -156,8 +146,7 @@
                 let ratio = (displayValue / user.predicted) * 100;
                 if (ratio >= 55) { pageContainer.className = "container bg-green"; statusText.textContent = "เยี่ยมมาก ✅"; }
                 else if (ratio >= 35) { pageContainer.className = "container bg-yellow"; statusText.textContent = "แรงอีกนิด ⚠️"; }
-                else { pageContainer.className = "container bg-red"; statusText.textContent = "เบาเกินไป ❌"; }
-
+                else { pageContainer.className = "container bg-red"; statusText.textContent = "เบาไป ❌"; }
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(stopTestRound, 1500);
             }
@@ -171,13 +160,9 @@
     }
 
     function stopTestRound() {
-        isMeasuring = false;
-        clearTimeout(silenceTimer);
-        cancelAnimationFrame(animationId);
-        allRounds.push(currentRoundMax);
-        allDurations.push(roundDuration);
-        document.getElementById('startBtn').classList.remove('hidden');
-        document.getElementById('stopBtn').classList.add('hidden');
+        isMeasuring = false; clearTimeout(silenceTimer); cancelAnimationFrame(animationId);
+        allRounds.push(currentRoundMax); allDurations.push(roundDuration);
+        document.getElementById('startBtn').classList.remove('hidden'); document.getElementById('stopBtn').classList.add('hidden');
         document.getElementById('page2').className = "container bg-normal";
         if (round >= 5) setTimeout(showFinal, 800);
     }
@@ -185,51 +170,25 @@
     function showFinal() {
         document.getElementById('page2').style.display = 'none';
         document.getElementById('page3').classList.remove('hidden');
-        const avgPefr = allRounds.reduce((a, b) => a + b, 0) / allRounds.length;
+        const avgPefr = allRounds.reduce((a, b) => a + b, 0) / 5;
         const ratio = (avgPefr / user.predicted) * 100;
-
-        document.getElementById('summary-data').innerHTML = `
-            <b>ชื่อ:</b> ${user.name} | <b>ค่ามาตรฐาน:</b> ${user.predicted} L/min<br>
-            <b>ผลประเมิน:</b> ${ratio.toFixed(1)}% ของเป้าหมาย
-        `;
-
+        document.getElementById('summary-data').innerHTML = `<b>ชื่อ:</b> ${user.name} | <b>เป้าหมายมาตรฐาน:</b> ${user.predicted} L/min<br><b>ประสิทธิภาพ:</b> ${ratio.toFixed(1)}%`;
         document.getElementById('final-avg-val').textContent = Math.round(avgPefr);
         document.getElementById('final-avg-duration').textContent = `เวลาเฉลี่ย: ${(allDurations.reduce((a,b)=>a+b,0)/5).toFixed(2)} วินาที`;
         
-        const st = document.getElementById('final-status');
-        const card = document.getElementById('final-card');
-        const adviceBox = document.getElementById('advice-box');
-
+        const st = document.getElementById('final-status'), card = document.getElementById('final-card'), advice = document.getElementById('advice-box');
         if (ratio >= 55) {
-            st.textContent = "ปกติ (Green Zone) 🟢";
-            card.style.background = "#dcfce7"; card.style.color = "#15803d";
-            adviceBox.style.background = "#f0fdf4"; adviceBox.style.color = "#166534";
-            adviceBox.innerHTML = `
-                <div class="advice-title">✅ คำแนะนำ:</div>
-                - สุขภาพปอดของคุณอยู่ในเกณฑ์ดีเยี่ยม<br>
-                - ควรออกกำลังกายแบบคาร์ดิโอ (วิ่ง, ว่ายน้ำ) ต่อเนื่องเพื่อรักษาความแข็งแรง<br>
-                - หลีกเลี่ยงพื้นที่ที่มีฝุ่นควันหรือมลพิษ PM 2.5
-            `;
+            st.textContent = "ปกติ (Green) 🟢"; card.style.background = "#dcfce7"; card.style.color = "#15803d";
+            advice.style.background = "#f0fdf4"; advice.style.color = "#166534";
+            advice.innerHTML = `<div class="advice-title">✅ คำแนะนำ:</div>สุขภาพปอดดีเยี่ยม ควรออกกำลังกายสม่ำเสมอเพื่อรักษาความแข็งแรงของกล้ามเนื้อทรวงอก`;
         } else if (ratio >= 35) {
-            st.textContent = "เฝ้าระวัง (Yellow Zone) 🟡";
-            card.style.background = "#fef3c7"; card.style.color = "#b45309";
-            adviceBox.style.background = "#fffbeb"; adviceBox.style.color = "#92400e";
-            adviceBox.innerHTML = `
-                <div class="advice-title">⚠️ คำแนะนำ:</div>
-                - ปอดของคุณเริ่มมีความอ่อนล้าหรือติดขัดเล็กน้อย<br>
-                - ควรฝึกการหายใจเข้า-ออกลึกๆ (Deep Breathing) บ่อยๆ<br>
-                - หากมีอาการไอหรือหอบเหนื่อยง่าย ควรสังเกตอาการอย่างใกล้ชิด
-            `;
+            st.textContent = "เฝ้าระวัง (Yellow) 🟡"; card.style.background = "#fef3c7"; card.style.color = "#b45309";
+            advice.style.background = "#fffbeb"; advice.style.color = "#92400e";
+            advice.innerHTML = `<div class="advice-title">⚠️ คำแนะนำ:</div>สมรรถภาพปอดเริ่มลดลง ควรฝึกเป่าลมหายใจเข้า-ออกยาวๆ และหลีกเลี่ยงควันบุหรี่หรือฝุ่นละออง`;
         } else {
-            st.textContent = "ควรพบแพทย์ (Red Zone) 🔴";
-            card.style.background = "#fee2e2"; card.style.color = "#b91c1c";
-            adviceBox.style.background = "#fef2f2"; adviceBox.style.color = "#991b1b";
-            adviceBox.innerHTML = `
-                <div class="advice-title">🚨 คำแนะนำด่วน:</div>
-                - สมรรถภาพปอดต่ำกว่าเกณฑ์มาตรฐานค่อนข้างมาก<br>
-                - **ควรปรึกษาแพทย์หรือผู้เชี่ยวชาญ** เพื่อตรวจเช็คระบบทางเดินหายใจ<br>
-                - งดกิจกรรมที่ต้องใช้แรงหนักชั่วคราวและพักผ่อนให้เพียงพอ
-            `;
+            st.textContent = "ควรพบแพทย์ (Red) 🔴"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c";
+            advice.style.background = "#fef2f2"; advice.style.color = "#991b1b";
+            advice.innerHTML = `<div class="advice-title">🚨 คำแนะนำด่วน:</div>ค่าการเป่าต่ำกว่าเกณฑ์มาตรฐานมาก หากมีอาการเหนื่อยหอบร่วมด้วย **ควรปรึกษาแพทย์** เพื่อตรวจเช็คอย่างละเอียด`;
         }
     }
 </script>
