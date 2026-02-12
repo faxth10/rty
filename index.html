@@ -3,294 +3,370 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Auto Round</title>
+  <title>Health Sensor App Pro - Lung Performance</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root { --primary: #1976d2; --success: #4caf50; --warning: #fbc02d; --danger: #f44336; --bg: #f5f7fa; }
-    body { font-family: "Kanit", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
-    .container { max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s ease; }
+    :root { 
+        --primary: #1976d2; --primary-dark: #1565c0; --success: #4caf50; 
+        --warning: #fbc02d; --danger: #f44336; --bg: #f0f4f8; --report-blue: #1e3a8a; 
+    }
+    
+    body { font-family: "Kanit", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; transition: background 0.4s; }
+    
+    /* Optimized Container */
+    .container { 
+        max-width: 500px; margin: 40px auto; background: #fff; padding: 35px; 
+        border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); 
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        position: relative; overflow: hidden;
+    }
+    
+    /* Decoration Circle */
+    .container::before { content: ""; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: rgba(25, 118, 210, 0.05); border-radius: 50%; }
+
+    /* Page Transitions */
+    .fade-in { animation: fadeIn 0.5s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Status Colors */
     .bg-normal { background: #fff; }
-    .bg-green { background: #dcfce7 !important; }
-    .bg-yellow { background: #fef3c7 !important; }
-    .bg-red { background: #fee2e2 !important; }
+    .bg-green { background: #e8f5e9 !important; border: 2px solid var(--success); }
+    .bg-yellow { background: #fffde7 !important; border: 2px solid var(--warning); }
+    .bg-red { background: #ffebee !important; border: 2px solid var(--danger); }
 
-    h1 { text-align: center; color: var(--primary); font-size: 22px; margin-bottom: 5px; }
-    .sub-title { text-align: center; color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
-    .round-tag { background: rgba(25, 118, 210, 0.1); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 15px; }
+    h1 { text-align: center; color: var(--primary); font-size: 26px; margin-bottom: 5px; font-weight: 600; }
+    .sub-title { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 30px; }
     
-    .value-display { font-size: 64px; font-weight: 700; line-height: 1; margin: 10px 0; font-variant-numeric: tabular-nums; }
-    canvas { width: 100%; height: 80px; border-radius: 15px; background: rgba(0,0,0,0.03); margin: 15px 0; }
+    .value-display { font-size: 80px; font-weight: 700; line-height: 1; margin: 20px 0; text-align: center; color: var(--report-blue); text-shadow: 2px 2px 0 rgba(0,0,0,0.05); }
+    
+    canvas { width: 100%; height: 110px; border-radius: 20px; background: #f8fafc; margin: 20px 0; border: 1px solid #edf2f7; }
+    
+    /* Button Styles */
+    button { 
+        width: 100%; padding: 16px; border-radius: 18px; border: none; 
+        font-size: 17px; font-weight: 600; cursor: pointer; 
+        transition: all 0.3s ease; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    button:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+    button:active { transform: scale(0.96); }
+    
+    .btn-start { background: linear-gradient(135deg, var(--primary), #42a5f5); color: white; box-shadow: 0 4px 15px rgba(25,118,212,0.3); }
+    .btn-outline { background: #fff; color: #64748b; border: 2px solid #f1f5f9; }
+    .btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .btn-back { background: #f1f5f9; color: #475569; width: auto; padding: 10px 20px; font-size: 14px; position: absolute; top: 15px; left: 15px; border-radius: 12px; }
 
-    button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
-    .btn-start { background: var(--primary); color: white; }
-    .btn-outline { background: rgba(0,0,0,0.05); color: #64748b; }
-    
-    .input-group { margin-bottom: 15px; text-align: left; }
-    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-family: 'Kanit'; font-size: 16px; }
+    .input-group { margin-bottom: 20px; }
+    label { font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 8px; display: block; padding-left: 5px; }
+    input, select { 
+        width: 100%; padding: 15px; border: 2px solid #f1f5f9; border-radius: 15px; 
+        box-sizing: border-box; font-family: 'Kanit'; font-size: 16px; transition: 0.3s;
+    }
+    input:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1); }
+
+    /* Success Modal */
+    #successModal {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6);
+        display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px);
+    }
+    .modal-content {
+        background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 400px;
+        animation: modalSlide 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes modalSlide { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
     .hidden { display: none !important; }
-    #advice-box { text-align: left; padding: 15px; border-radius: 15px; margin-top: 15px; font-size: 14px; line-height: 1.6; }
 
-    /* ============ สไตล์สำหรับการพิมพ์ใบรายงาน (Print-Only) ============ */
-    #printable-report { display: none; }
+    /* Report Print Styles (คงเดิม) */
+    .report-page { background: white; padding: 40px; width: 210mm; min-height: 297mm; margin: 20px auto; box-sizing: border-box; color: #334155; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
+    .main-grid { display: grid; grid-template-columns: 280px 1fr; gap: 30px; }
+    .card { background: #f8fafc; border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th { text-align: left; padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 500; }
+    td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; }
 
     @media print {
-        body { background: white; padding: 0; margin: 0; }
-        .container, button, hr { display: none !important; } /* ซ่อนหน้าจอแอป */
-        
-        #printable-report { 
-            display: block !important; 
-            width: 210mm; min-height: 297mm; padding: 40px; box-sizing: border-box; background: white; color: #1e293b;
-        }
-        .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 25px; }
-        .main-grid { display: grid; grid-template-columns: 260px 1fr; gap: 30px; }
-        .report-card { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
-        .report-info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; font-size: 13px; }
-        .report-val { font-weight: 600; font-size: 15px; }
-        .report-chart { height: 120px; display: flex; align-items: flex-end; gap: 12px; justify-content: center; border-bottom: 2px solid #e2e8f0; margin: 20px 0 30px; position: relative; }
-        .report-bar { background: #1976d2; width: 30px; border-radius: 4px 4px 0 0; position: relative; }
-        .bar-tag { position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%); font-size: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; color: #64748b; }
-        td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; }
+        body { background: white !important; padding: 0; }
+        .no-print, .container, #successModal { display: none !important; }
+        .report-page { width: 100%; margin: 0; box-shadow: none; padding: 20px; }
     }
   </style>
 </head>
 <body>
 
-<div class="container" id="page1">
-    <center><img width="80px" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dh1EFfBVQyfw8WKTTaaqjwzfRXWzLyL6yw&s" alt="Logo"></center>
+<div class="container fade-in" id="page1">
+    <center><img width="80px" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dh1EFfBVQyfw8WKTTaaqjwzfRXWzLyL6yw&s" style="border-radius: 20px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);"></center>
     <h1>Health Sensor App</h1>
-    <div class="sub-title">ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</div>
-    <div class="input-group"><label>ชื่อผู้ใช้งาน</label><input id="name" type="text" placeholder="ระบุชื่อ"></div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" placeholder="ระบุอายุ"></div>
-        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" placeholder="ระบุส่วนสูง"></div>
+    <div class="sub-title">ระบบวิเคราะห์สุขภาพปอดอัจฉริยะ ✨</div>
+    
+    <div class="input-group"><label>ชื่อ-นามสกุล</label><input id="name" type="text" placeholder="ระบุชื่อเพื่อบันทึกผล"></div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" placeholder="เช่น 17"></div>
+        <div class="input-group"><label>เพศ</label><select id="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
     </div>
-    <div class="input-group"><label>เพศ</label><select id="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
-    <button class="btn-start" onclick="initMicAndNextPage()">เข้าสู่การทดสอบ 🚀</button>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" placeholder="เช่น 170"></div>
+        <div class="input-group"><label>น้ำหนัก (กก.)</label><input id="weight" type="number" placeholder="เช่น 60"></div>
+    </div>
+
+    <button class="btn-start" onclick="initSystem()">ถัดไป — เริ่มเข้าสู่การทดสอบ ❯</button>
 </div>
 
-<div class="container" id="page2" style="text-align: center; display: none;">
-    <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:10px; font-size:12px; margin-bottom:10px;">📏 <b>ถือห่าง 5-10 ซม.</b> เป่าแล้วระบบจะขยับรอบเองอัตโนมัติ</div>
-    <div class="round-tag">รอบที่ <span id="roundNo">1</span> / 5</div>
-    <div id="status-display">
-        <div id="status-text" style="font-size: 18px; font-weight: 600;">สูดลมหายใจ... แล้วเป่าเลย!</div>
-        <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
-        <div style="font-size: 18px;">⏱ <span id="current-timer">0.00</span> วินาที</div>
+<div class="container fade-in" id="page2" style="display: none;">
+    <button class="btn-back" onclick="goBack()">❮ กลับหน้าหลัก</button>
+    <div style="margin-top: 30px; background:rgba(25, 118, 210, 0.05); color:var(--primary); padding:15px; border-radius:20px; font-size:13px; margin-bottom:25px; text-align: center; border: 1px dashed var(--primary);">
+        <b>📌 วิธีใช้:</b> สูดลมหายใจให้สุด แล้วเป่าลมใส่ไมโครโฟนให้ "แรงและเร็ว" ที่สุดในครั้งเดียว
     </div>
-    <canvas id="graphCanvas"></canvas>
-    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มการทดสอบ (5 รอบ)</button>
-</div>
-
-<div class="container hidden" id="page3" style="text-align: center;">
-    <h1>📊 สรุปผลการทดสอบ</h1>
-    <div id="summary-data" style="background:rgba(0,0,0,0.02); padding:15px; border-radius:15px; margin:15px 0; text-align:left;"></div>
-    <div id="final-card" style="padding:20px; border-radius:20px; border: 1px solid #eee;">
-        <div id="final-status" style="font-size:24px; font-weight:700;"></div>
-        <div style="font-size: 14px; margin: 5px 0;">ค่าเฉลี่ยแรงลม: <span id="final-avg-val">0</span> L/min</div>
-    </div>
-    <div id="advice-box"></div>
-    <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
-    <button class="btn-start" onclick="window.print()">💾 พิมพ์ผลการทดสอบ</button>
-    <button class="btn-outline" onclick="location.reload()">🔄 เริ่มการทดสอบใหม่</button>
-</div>
-
-<div id="printable-report">
-    <div class="report-header">
-        <div style="font-weight:700; color:#1976d2; display:flex; align-items:center; gap:10px;">
-            <img width="30" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dh1EFfBVQyfw8WKTTaaqjwzfRXWzLyL6yw&s"> Health Sensor App
+    
+    <div style="text-align: center;">
+        <div id="round-indicator" style="background: var(--report-blue); color: white; padding: 6px 20px; border-radius: 25px; font-size: 15px; display: inline-block; margin-bottom: 15px; font-weight: 500;">
+            ความพยายามรอบที่ <span id="roundNo">1</span> / 5
         </div>
-        <div id="pr-date" style="font-size:12px; color:#64748b;"></div>
+        <h2 id="status-text" style="margin: 10px 0; font-size: 22px;">พร้อมเป่าหรือไม่?</h2>
+        
+        <div class="value-display"><span id="val-num">0</span> <small style="font-size: 20px;">L/min</small></div>
+        <div style="font-size: 16px; color: #94a3b8; font-weight: 500;">⏱ ระยะเวลา: <span id="current-timer">0.00</span> วินาที</div>
     </div>
-    <h2 style="text-align:center; color:#1e3a8a; margin:20px 0;">ใบสรุปผลการตรวจสมรรถภาพปอด</h2>
+
+    <canvas id="graphCanvas"></canvas>
+    <button id="startBtn" class="btn-start" onclick="startTestRound()">🚀 กดเพื่อเริ่มเป่ารอบนี้</button>
+</div>
+
+<div id="successModal">
+    <div class="modal-content">
+        <div style="font-size: 60px; margin-bottom: 20px;">🎉</div>
+        <h2 style="color: var(--primary);">การทดสอบสำเร็จ!</h2>
+        <p style="color: #64748b; line-height: 1.6;">คุณเป่าครบ 5 รอบเรียบร้อยแล้ว<br>ระบบได้คำนวณผลลัพธ์และเตรียมใบรายงานให้คุณแล้วครับ</p>
+        <button class="btn-start" style="margin-top: 20px;" onclick="goToReport()">📄 ดูรายงานผลสรุป</button>
+    </div>
+</div>
+
+<div id="page3" class="report-page hidden fade-in">
+    <div class="report-header" style="display: flex; justify-content: space-between; border-bottom: 3px solid var(--report-blue); padding-bottom: 15px;">
+        <div style="display:flex; align-items:center; gap:12px; font-weight:700; color:var(--report-blue); font-size: 22px;">
+            <img width="45" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dh1EFfBVQyfw8WKTTaaqjwzfRXWzLyL6yw&s"> Health Sensor App
+        </div>
+        <div style="text-align: right;">
+            <div id="res-date" style="font-size:15px; font-weight: 600;"></div>
+            <div style="font-size:11px; color:#94a3b8;">Lung Performance Analysis Report</div>
+        </div>
+    </div>
+
+    <h2 style="text-align:center; color:var(--report-blue); font-size:30px; margin:35px 0; letter-spacing: 1px;">ใบสรุปผลการทดสอบสมรรถภาพปอด</h2>
+
     <div class="main-grid">
         <div class="left-col">
-            <div class="report-card">
-                <div style="font-weight:600; margin-bottom:10px; font-size:14px; color:#475569;">ข้อมูลผู้เข้ารับการตรวจ</div>
-                <div id="pr-name" class="report-val" style="font-size:17px; margin-bottom:10px;">-</div>
-                <div class="report-info-row">
-                    <div>เพศ: <span id="pr-gender" class="report-val">-</span></div>
-                    <div>อายุ: <span id="pr-age" class="report-val">-</span> ปี</div>
+            <div class="card">
+                <div style="font-weight:600; margin-bottom:15px; font-size:16px; color:var(--primary); border-left: 4px solid var(--primary); padding-left: 10px;">ข้อมูลส่วนบุคคล</div>
+                <div id="res-name" style="font-size: 20px; font-weight: 600; margin-bottom: 12px; color: #1e293b;">---</div>
+                <div style="font-size: 14px; line-height: 2.2; color: #475569;">
+                    <b>เพศ:</b> <span id="res-gender">-</span><br>
+                    <b>อายุ:</b> <span id="res-age">-</span> ปี<br>
+                    <b>ส่วนสูง:</b> <span id="res-height">-</span> ซม.<br>
+                    <b>ค่า BMI:</b> <span id="res-bmi">-</span> (<span id="res-bmi-text">-</span>)
                 </div>
-                <div>ส่วนสูง: <span id="pr-height" class="report-val">-</span> cm</div>
             </div>
-            <div class="report-card">
-                <div style="font-weight:600; margin-bottom:5px; font-size:14px;">การวินิจฉัยเบื้องต้น</div>
-                <div id="pr-advice" style="font-size:13px; line-height:1.5; color:#334155;">-</div>
-            </div>
-            <div style="margin-top:60px">
-                <div style="font-size:12px; margin-bottom:40px;">ผู้รับรองผล:</div>
-                <div style="border-bottom:1px solid #cbd5e1; width:180px;"></div>
-                <div style="font-size:11px; color:#94a3b8; margin-top:5px;">วันที่: ....../....../......</div>
+
+            <div class="card" style="background: #f0f9ff; border: 1px solid #bae6fd;">
+                <div style="font-weight:600; margin-bottom:10px; font-size:15px; color:var(--report-blue);">💡 คำแนะนำจากระบบ</div>
+                <div id="res-advice" style="font-size:13px; color:#1e293b; line-height:1.8;">-</div>
             </div>
         </div>
+
         <div class="right-col">
-            <div class="report-card" style="background:white; border:none; padding:0;">
-                <div style="text-align:center; font-size:18px; font-weight:700; color:#1e3a8a;" id="pr-status">ปกติ</div>
-                <div style="text-align:center; font-size:36px; font-weight:700; color:#1976d2; margin:5px 0;"><span id="pr-avg">0</span> L/min</div>
-                <div style="text-align:center; font-size:12px; color:#64748b; margin-bottom:20px;">ค่ามาตรฐานอ้างอิง: <span id="pr-pred">0</span> L/min</div>
+            <div class="card" style="background:white; border: 2px solid #e2e8f0; border-radius: 20px;">
+                <div style="text-align:center; color:#64748b; font-size:15px; margin-bottom: 5px;">ประสิทธิภาพเฉลี่ย (PEFR Average)</div>
+                <div id="res-avg-val" style="text-align:center; font-size:56px; font-weight:800; color:var(--primary); line-height:1;">0</div>
+                <div style="text-align:center; font-size:16px; font-weight:600; margin-top:10px; color: #94a3b8;">ลิตรต่อนาที (L/min)</div>
                 
-                <div class="report-chart" id="pr-chart"></div>
-                
-                <table>
-                    <thead><tr><th>รอบที่</th><th>ค่าที่วัดได้ (L/min)</th><th>สถานะ</th></tr></thead>
-                    <tbody id="pr-table"></tbody>
-                </table>
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 2px dashed #f1f5f9; display: flex; justify-content: space-around; text-align: center;">
+                    <div><div style="font-size: 11px; color: #94a3b8;">ค่ามาตรฐาน</div><div id="res-pred-val" style="font-weight: 600; font-size: 17px;">0</div></div>
+                    <div><div style="font-size: 11px; color: #94a3b8;">ผลการประเมิน</div><div id="res-status-text" style="font-weight: 700; font-size: 17px;">-</div></div>
+                </div>
             </div>
+
+            <div style="height: 180px; display: flex; align-items: flex-end; gap: 15px; justify-content: center; margin: 30px 0; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9;" id="bar-chart-area"></div>
+
+            <table>
+                <thead><tr><th>รอบที่</th><th>ปริมาณที่วัดได้</th><th>เทียบกับมาตรฐาน (%)</th></tr></thead>
+                <tbody id="res-table-body"></tbody>
+            </table>
         </div>
+    </div>
+    
+    <div style="margin-top: 45px; display: flex; justify-content: space-between; align-items: center;" class="no-print">
+        <button class="btn-start" style="width: 280px;" onclick="window.print()">🖨️ พิมพ์หรือบันทึกรายงานเป็น PDF</button>
+        <button class="btn-outline" style="width: 150px;" onclick="location.reload()">🔄 เริ่มการทดสอบใหม่</button>
     </div>
 </div>
 
 <script>
-    let user = {}, round = 0, allRounds = [], allDurations = [], isMeasuring = false;
-    let audioContext, analyser, microphone, lowpassFilter, dataArray, animationId, globalStream;
-    let currentRoundMax = 0, startTime = 0, roundDuration = 0, smoothedValue = 0;
-    let hasReachedThreshold = false;
-    const smoothingFactor = 0.15;
+    let user = {}, roundsData = [], isMeasuring = false;
+    let audioCtx, analyser, dataArray, animationId, stream;
+    let currentMax = 0, startTime = 0, smoothed = 0;
+    const SMOOTHING = 0.25; 
 
-    function getPredictedPEFR(age, height, gender) {
-        let base = (gender === 'ชาย') ? ((height - 100) * 5 + 100) : ((height - 100) * 4 + 50);
-        return Math.max(200, Math.round(base - (age * 0.5)));
-    }
+    // เริ่มต้นระบบ
+    async function initSystem() {
+        const fields = ['name', 'age', 'height', 'weight', 'gender'];
+        for(let f of fields) { if(!document.getElementById(f).value) return alert('โปรดระบุข้อมูลให้ครบถ้วนเพื่อผลลัพธ์ที่ถูกต้อง'); }
 
-    async function initMicAndNextPage() {
-        const n = document.getElementById('name').value, a = document.getElementById('age').value, h = document.getElementById('height').value, g = document.getElementById('gender').value;
-        if (!n || !a || !h || !g) return alert('กรุณากรอกข้อมูลให้ครบถ้วน');
         try {
-            globalStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-            user = { name: n, age: parseInt(a), height: parseInt(h), gender: g };
-            user.predicted = getPredictedPEFR(user.age, user.height, user.gender);
+            stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false }});
+            user = {
+                name: document.getElementById('name').value,
+                age: parseInt(document.getElementById('age').value),
+                height: parseInt(document.getElementById('height').value),
+                weight: parseInt(document.getElementById('weight').value),
+                gender: document.getElementById('gender').value
+            };
+            user.predicted = calculatePredicted(user.age, user.height, user.gender);
+            user.bmi = calculateBMI(user.weight, user.height);
+            
             document.getElementById('page1').style.display = 'none';
             document.getElementById('page2').style.display = 'block';
-        } catch (e) { alert('ไม่สามารถเข้าถึงไมโครโฟนได้'); }
+            document.body.style.background = "#eef2f6";
+        } catch (e) { alert('ระบบต้องการไมโครโฟนเพื่อวัดความแรงลมเป่า กรุณาตั้งค่าอนุญาตไมโครโฟน'); }
+    }
+
+    // ปุ่มกลับ
+    function goBack() {
+        if(confirm('ต้องการกลับไปหน้าข้อมูลส่วนตัวหรือไม่? (ข้อมูลรอบที่เป่าไปแล้วจะหายไป)')) {
+            location.reload();
+        }
+    }
+
+    function calculateBMI(w, h) {
+        const bmi = w / ((h/100) ** 2);
+        let text = bmi < 18.5 ? "ผอม" : bmi < 23 ? "ปกติ" : bmi < 25 ? "เริ่มท้วม" : "อ้วน";
+        return { val: bmi.toFixed(1), text: text };
+    }
+
+    function calculatePredicted(age, height, gender) {
+        let b = (gender === 'ชาย') ? ((height - 100) * 5 + 100) : ((height - 100) * 4 + 70);
+        return Math.max(200, Math.round(b - (age * 0.4)));
     }
 
     async function startTestRound() {
-        if (round >= 5) return;
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            microphone = audioContext.createMediaStreamSource(globalStream);
-            lowpassFilter = audioContext.createBiquadFilter();
-            lowpassFilter.type = "lowpass";
-            lowpassFilter.frequency.value = 350;
-            microphone.connect(lowpassFilter);
-            lowpassFilter.connect(analyser);
-            analyser.fftSize = 1024;
+        if (roundsData.length >= 5) return;
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const src = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            src.connect(analyser);
             dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
-        round++;
-        resetRoundData();
+        isMeasuring = true; currentMax = 0; startTime = 0; smoothed = 0;
         document.getElementById('startBtn').classList.add('hidden');
-        isMeasuring = true;
-        runLoop();
+        document.getElementById('status-text').textContent = "💨 เป่าเลย!!!";
+        updateLoop();
     }
 
-    function resetRoundData() {
-        currentRoundMax = 0; roundDuration = 0; startTime = 0; smoothedValue = 0;
-        hasReachedThreshold = false;
-        document.getElementById('roundNo').textContent = round;
-        document.getElementById('val-num').textContent = "0";
-        document.getElementById('current-timer').textContent = "0.00";
-        document.getElementById('status-text').textContent = "รอบที่ " + round + ": เป่าเลย!";
-        document.getElementById('page2').className = "container bg-normal";
-    }
+    function updateLoop() {
+        if (!isMeasuring) return;
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        let raw = (sum / dataArray.length) * 8.5; 
+        smoothed = (raw * SMOOTHING) + (smoothed * (1 - SMOOTHING));
+        let val = smoothed < 25 ? 0 : smoothed;
 
-    function runLoop() {
-        const canvas = document.getElementById('graphCanvas'), ctx = canvas.getContext('2d'), pageContainer = document.getElementById('page2'), statusText = document.getElementById('status-text');
-        function draw() {
-            if (!isMeasuring) return;
-            analyser.getByteFrequencyData(dataArray);
-            let sumSquares = 0;
-            for (let i = 0; i < dataArray.length; i++) { sumSquares += dataArray[i] * dataArray[i]; }
-            let rms = Math.sqrt(sumSquares / dataArray.length);
-            let rawPefr = Math.min(900, rms * 6.0); 
-            smoothedValue = (rawPefr * smoothingFactor) + (smoothedValue * (1 - smoothingFactor));
-            let displayValue = smoothedValue < 15 ? 0 : smoothedValue;
+        if (val > 45 && startTime === 0) { startTime = Date.now(); if (navigator.vibrate) navigator.vibrate(50); }
 
-            if (displayValue > 50 && !hasReachedThreshold) {
-                hasReachedThreshold = true;
-                startTime = Date.now();
-            }
-            if (hasReachedThreshold) {
-                roundDuration = (Date.now() - startTime) / 1000;
-                document.getElementById('current-timer').textContent = roundDuration.toFixed(2);
-                if (displayValue > currentRoundMax) currentRoundMax = displayValue;
-                let ratio = (displayValue / user.predicted) * 100;
-                if (ratio >= 55) { pageContainer.className = "container bg-green"; statusText.textContent = "เยี่ยม! 🟢"; }
-                else if (ratio >= 35) { pageContainer.className = "container bg-yellow"; statusText.textContent = "อีกนิด! 🟡"; }
-                else { pageContainer.className = "container bg-red"; statusText.textContent = "เบาไป! 🔴"; }
-                if (displayValue < 30 && roundDuration > 0.3) {
-                    stopAndAutoNext();
-                    return;
-                }
-            }
-            document.getElementById('val-num').textContent = Math.round(displayValue);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'rgba(25, 118, 210, 0.5)';
-            ctx.fillRect(0, canvas.height, canvas.width, -(displayValue/900 * canvas.height));
-            animationId = requestAnimationFrame(draw);
+        if (startTime > 0) {
+            let elapsed = (Date.now() - startTime) / 1000;
+            document.getElementById('current-timer').textContent = elapsed.toFixed(2);
+            if (val > currentMax) currentMax = val;
+            let perf = (val / user.predicted) * 100;
+            const p2 = document.getElementById('page2');
+            p2.className = `container fade-in ${perf > 75 ? 'bg-green' : perf > 45 ? 'bg-yellow' : 'bg-red'}`;
+            if (elapsed > 0.6 && val < 35) { finishRound(); return; }
         }
-        draw();
+        document.getElementById('val-num').textContent = Math.round(val);
+        drawVisualizer(val);
+        animationId = requestAnimationFrame(updateLoop);
     }
 
-    function stopAndAutoNext() {
-        isMeasuring = false;
-        cancelAnimationFrame(animationId);
-        allRounds.push(Math.round(currentRoundMax));
-        allDurations.push(roundDuration);
-        if (round < 5) {
-            document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " แล้ว... เตรียมรอบถัดไป";
-            setTimeout(startTestRound, 1200);
+    function drawVisualizer(val) {
+        const c = document.getElementById('graphCanvas'), ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+        let grad = ctx.createLinearGradient(0, 0, c.width, 0);
+        grad.addColorStop(0, '#1976d2'); grad.addColorStop(1, '#10b981');
+        ctx.fillStyle = grad;
+        let w = (val / 950) * c.width;
+        ctx.beginPath();
+        ctx.roundRect(0, 20, Math.max(15, w), c.height - 40, 15);
+        ctx.fill();
+    }
+
+    function finishRound() {
+        isMeasuring = false; cancelAnimationFrame(animationId);
+        roundsData.push(Math.round(currentMax));
+        if (roundsData.length < 5) {
+            document.getElementById('roundNo').textContent = roundsData.length + 1;
+            document.getElementById('status-text').textContent = `บันทึกรอบที่ ${roundsData.length} สำเร็จ!`;
+            setTimeout(() => {
+                document.getElementById('startBtn').classList.remove('hidden');
+                document.getElementById('startBtn').textContent = `⚡ เริ่มเป่ารอบที่ ${roundsData.length + 1}`;
+            }, 800);
         } else {
-            showFinal();
+            document.getElementById('successModal').style.display = 'flex';
         }
     }
 
-    function showFinal() {
-        document.getElementById('page2').style.display = 'none';
+    function goToReport() {
+        document.getElementById('successModal').style.display = 'none';
+        document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
-        const avgPefr = Math.round(allRounds.reduce((a, b) => a + b, 0) / 5);
-        const ratio = (avgPefr / user.predicted) * 100;
-        
-        // 1. อัปเดตหน้าแอป (Page 3)
-        document.getElementById('summary-data').innerHTML = `<b>ผู้ใช้งาน:</b> ${user.name}<br><b>ประสิทธิภาพเฉลี่ย:</b> ${ratio.toFixed(1)}% ของค่ามาตรฐาน (${user.predicted} L/min)`;
-        document.getElementById('final-avg-val').textContent = avgPefr;
-        const st = document.getElementById('final-status'), card = document.getElementById('final-card'), adv = document.getElementById('advice-box');
-        
-        let statusText = "", adviceText = "";
-        if (ratio >= 55) {
-            statusText = "ปกติ 🟢"; card.style.background = "#dcfce7"; card.style.color = "#15803d";
-            adviceText = "สุขภาพปอดดีเยี่ยม ควรออกกำลังกายสม่ำเสมอ";
-        } else if (ratio >= 35) {
-            statusText = "เฝ้าระวัง 🟡"; card.style.background = "#fef3c7"; card.style.color = "#b45309";
-            adviceText = "สมรรถภาพปอดเริ่มลดลง ควรฝึกการหายใจลึกๆ";
-        } else {
-            statusText = "ควรพบแพทย์ 🔴"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c";
-            adviceText = "ค่าแรงลมต่ำกว่าเกณฑ์มาก ควรปรึกษาแพทย์โดยเร็ว";
-        }
-        st.textContent = statusText; adv.innerHTML = adviceText;
+        document.body.style.background = "#334155";
+        renderReport();
+    }
 
-        // 2. อัปเดตข้อมูลใบรายงาน (Print-Only)
-        document.getElementById('pr-date').textContent = new Date().toLocaleString('th-TH');
-        document.getElementById('pr-name').textContent = user.name;
-        document.getElementById('pr-gender').textContent = user.gender;
-        document.getElementById('pr-age').textContent = user.age;
-        document.getElementById('pr-height').textContent = user.height;
-        document.getElementById('pr-status').textContent = statusText;
-        document.getElementById('pr-avg').textContent = avgPefr;
-        document.getElementById('pr-pred').textContent = user.predicted;
-        document.getElementById('pr-advice').textContent = adviceText;
+    function renderReport() {
+        const avg = Math.round(roundsData.reduce((a, b) => a + b, 0) / 5);
+        const ratio = Math.round((avg / user.predicted) * 100);
+        
+        document.getElementById('res-date').textContent = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('res-name').textContent = user.name;
+        document.getElementById('res-gender').textContent = user.gender;
+        document.getElementById('res-age').textContent = user.age;
+        document.getElementById('res-height').textContent = user.height;
+        document.getElementById('res-bmi').textContent = user.bmi.val;
+        document.getElementById('res-bmi-text').textContent = user.bmi.text;
+        document.getElementById('res-avg-val').textContent = avg;
+        document.getElementById('res-pred-val').textContent = user.predicted + " L/min";
 
-        const chart = document.getElementById('pr-chart');
-        const table = document.getElementById('pr-table');
+        let st = "", ad = "", cl = "";
+        if (ratio >= 80) { st = "ปกติ (Green Zone)"; cl = "#10b981"; ad = "สุขภาพปอดของคุณยอดเยี่ยมมาก อยู่ในเกณฑ์มาตรฐาน แนะนำให้ออกกำลังกายต่อเนื่องเพื่อรักษาประสิทธิภาพนี้ครับ"; }
+        else if (ratio >= 50) { st = "ควรเฝ้าระวัง (Yellow)"; cl = "#f59e0b"; ad = "ประสิทธิภาพปอดลดลงเล็กน้อย หากมีอาการหอบเหนื่อยง่าย ควรปรึกษาแพทย์ และหลีกเลี่ยงพื้นที่ที่มีฝุ่นควันหรือมลพิษ"; }
+        else { st = "ต่ำกว่าเกณฑ์ (Red Zone)"; cl = "#ef4444"; ad = "<b>ข้อแนะนำสำคัญ:</b> ค่าที่ได้ต่ำกว่าเกณฑ์มาตรฐานมาก ควรนัดพบแพทย์เพื่อตรวจประเมินสมรรถภาพปอดอย่างละเอียดด้วยเครื่องมือทางการแพทย์ครับ"; }
+
+        document.getElementById('res-status-text').textContent = st;
+        document.getElementById('res-status-text').style.color = cl;
+        document.getElementById('res-advice').innerHTML = ad;
+
+        const chart = document.getElementById('bar-chart-area');
+        const table = document.getElementById('res-table-body');
         chart.innerHTML = ""; table.innerHTML = "";
-        
-        allRounds.forEach((v, i) => {
-            let r = Math.round((v / user.predicted) * 100);
-            chart.innerHTML += `<div class="report-bar" style="height:${(v/900)*100}%"><div class="bar-tag">T${i+1}</div></div>`;
-            table.innerHTML += `<tr><td>ครั้งที่ ${i+1}</td><td>${v}</td><td>${r >= 55 ? 'ปกติ' : (r >= 35 ? 'เฝ้าระวัง' : 'ต่ำ')}</td></tr>`;
+
+        roundsData.forEach((v, i) => {
+            let prf = Math.round((v / user.predicted) * 100);
+            let bcl = prf >= 80 ? '#10b981' : (prf >= 50 ? '#f59e0b' : '#ef4444');
+            chart.innerHTML += `<div style="flex:1; display:flex; flex-direction:column; align-items:center; height:100%;"><div style="font-size:11px; font-weight:600; margin-bottom:5px;">${v}</div><div style="width:100%; background:${bcl}; height:${Math.min(100, (v/user.predicted)*80)}%; border-radius:8px 8px 0 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);"></div><div style="font-size:12px; margin-top:8px; font-weight:500;">รอบที่ ${i+1}</div></div>`;
+            table.innerHTML += `<tr><td>ครั้งที่ ${i+1}</td><td><b>${v}</b> L/min</td><td style="color:${bcl}; font-weight:700;">${prf}%</td></tr>`;
         });
+    }
+
+    // Polyfill for roundRect in older browsers
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+            this.beginPath(); this.moveTo(x + r, y);
+            this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r);
+            this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r);
+            this.closePath(); return this;
+        };
     }
 </script>
 </body>
