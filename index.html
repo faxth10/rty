@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Stable Pro</title>
+  <title>Health Sensor App - Auto Round</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root { --primary: #1976d2; --success: #4caf50; --warning: #fbc02d; --danger: #f44336; --bg: #f5f7fa; }
     body { font-family: "Kanit", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
     .container { max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s ease; }
-    
-    /* Dynamic Backgrounds */
     .bg-normal { background: #fff; }
     .bg-green { background: #dcfce7 !important; }
     .bg-yellow { background: #fef3c7 !important; }
@@ -25,7 +23,6 @@
 
     button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
     .btn-start { background: var(--primary); color: white; }
-    .btn-stop { background: var(--danger); color: white; }
     .btn-outline { background: rgba(0,0,0,0.05); color: #64748b; }
     
     .input-group { margin-bottom: 15px; text-align: left; }
@@ -51,16 +48,15 @@
 </div>
 
 <div class="container" id="page2" style="text-align: center; display: none;">
-    <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:10px; font-size:12px; margin-bottom:10px;">📏 คำแนะนำ: ถือเครื่องห่างจากปาก <b>5 - 10 ซม.</b></div>
+    <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:10px; font-size:12px; margin-bottom:10px;">📏 <b>ถือห่าง 5-10 ซม.</b> เป่าแล้วระบบจะขยับรอบเองอัตโนมัติ</div>
     <div class="round-tag">รอบที่ <span id="roundNo">1</span> / 5</div>
     <div id="status-display">
-        <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมแล้ว... เริ่มเป่าได้</div>
+        <div id="status-text" style="font-size: 18px; font-weight: 600;">สูดลมหายใจ... แล้วเป่าเลย!</div>
         <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
         <div style="font-size: 18px;">⏱ <span id="current-timer">0.00</span> วินาที</div>
     </div>
     <canvas id="graphCanvas"></canvas>
-    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่ารอบนี้</button>
-    <button id="stopBtn" class="btn-stop hidden" onclick="stopTestRound()">⏹️ หยุดและบันทึก</button>
+    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มการทดสอบ (5 รอบ)</button>
 </div>
 
 <div class="container hidden" id="page3" style="text-align: center;">
@@ -69,7 +65,6 @@
     <div id="final-card" style="padding:20px; border-radius:20px; border: 1px solid #eee;">
         <div id="final-status" style="font-size:24px; font-weight:700;"></div>
         <div style="font-size: 14px; margin: 5px 0;">ค่าเฉลี่ยแรงลม: <span id="final-avg-val">0</span> L/min</div>
-        <div id="final-avg-duration" style="font-size:14px; opacity: 0.8;"></div>
     </div>
     <div id="advice-box"></div>
     <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
@@ -80,11 +75,9 @@
 <script>
     let user = {}, round = 0, allRounds = [], allDurations = [], isMeasuring = false;
     let audioContext, analyser, microphone, lowpassFilter, dataArray, animationId, globalStream;
-    let silenceTimer, currentRoundMax = 0, startTime = 0, roundDuration = 0;
-    
-    // Smoothing Variables
-    let smoothedValue = 0;
-    const smoothingFactor = 0.12; // ค่ายิ่งน้อย ตัวเลขยิ่งนิ่ง (0.1 - 0.2)
+    let currentRoundMax = 0, startTime = 0, roundDuration = 0, smoothedValue = 0;
+    let hasReachedThreshold = false; // ตัวแปรเช็คว่าเริ่มเป่าแรงหรือยัง
+    const smoothingFactor = 0.15;
 
     function getPredictedPEFR(age, height, gender) {
         let base = (gender === 'ชาย') ? ((height - 100) * 5 + 100) : ((height - 100) * 4 + 50);
@@ -111,20 +104,31 @@
             microphone = audioContext.createMediaStreamSource(globalStream);
             lowpassFilter = audioContext.createBiquadFilter();
             lowpassFilter.type = "lowpass";
-            lowpassFilter.frequency.value = 350; // ตัดเสียงแหลมทิ้ง เน้นเสียงลมเป่าทุ้มๆ
+            lowpassFilter.frequency.value = 350;
             microphone.connect(lowpassFilter);
             lowpassFilter.connect(analyser);
             analyser.fftSize = 1024;
             dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
+        
         round++;
-        currentRoundMax = 0; roundDuration = 0; startTime = 0; smoothedValue = 0;
-        document.getElementById('roundNo').textContent = round;
+        resetRoundData();
         document.getElementById('startBtn').classList.add('hidden');
-        document.getElementById('stopBtn').classList.remove('hidden');
-        document.getElementById('page2').className = "container bg-normal";
         isMeasuring = true;
         runLoop();
+    }
+
+    function resetRoundData() {
+        currentRoundMax = 0;
+        roundDuration = 0;
+        startTime = 0;
+        smoothedValue = 0;
+        hasReachedThreshold = false; // รีเซ็ตสถานะการเริ่มเป่า
+        document.getElementById('roundNo').textContent = round;
+        document.getElementById('val-num').textContent = "0";
+        document.getElementById('current-timer').textContent = "0.00";
+        document.getElementById('status-text').textContent = "รอบที่ " + round + ": เป่าเลย!";
+        document.getElementById('page2').className = "container bg-normal";
     }
 
     function runLoop() {
@@ -134,31 +138,35 @@
             if (!isMeasuring) return;
             analyser.getByteFrequencyData(dataArray);
             
-            // RMS Calculation (Root Mean Square) เพื่อความนิ่ง
             let sumSquares = 0;
             for (let i = 0; i < dataArray.length; i++) { sumSquares += dataArray[i] * dataArray[i]; }
             let rms = Math.sqrt(sumSquares / dataArray.length);
 
-            // ปรับ Sensitivity (5.8) สำหรับระยะ 5-10 ซม.
-            let rawPefr = Math.min(900, rms * 5.8); 
-            
-            // Double Smoothing Filter
+            let rawPefr = Math.min(900, rms * 6.0); 
             smoothedValue = (rawPefr * smoothingFactor) + (smoothedValue * (1 - smoothingFactor));
-            let displayValue = smoothedValue < 20 ? 0 : smoothedValue;
+            let displayValue = smoothedValue < 15 ? 0 : smoothedValue;
 
-            if (displayValue > 30) {
-                if (startTime === 0) startTime = Date.now();
+            // 1. ตรวจสอบจุดเริ่มเป่า (ต้องแรงกว่า 50 ถึงจะเริ่มนับว่าเป็นการเป่าจริง)
+            if (displayValue > 50 && !hasReachedThreshold) {
+                hasReachedThreshold = true;
+                startTime = Date.now();
+            }
+
+            if (hasReachedThreshold) {
                 roundDuration = (Date.now() - startTime) / 1000;
                 document.getElementById('current-timer').textContent = roundDuration.toFixed(2);
                 if (displayValue > currentRoundMax) currentRoundMax = displayValue;
                 
                 let ratio = (displayValue / user.predicted) * 100;
-                if (ratio >= 55) { pageContainer.className = "container bg-green"; statusText.textContent = "เยี่ยมมาก (ปกติ) ✅"; }
-                else if (ratio >= 35) { pageContainer.className = "container bg-yellow"; statusText.textContent = "แรงอีกนิด (เฝ้าระวัง) ⚠️"; }
-                else { pageContainer.className = "container bg-red"; statusText.textContent = "เบาไป (ควรพบแพทย์) ❌"; }
+                if (ratio >= 55) { pageContainer.className = "container bg-green"; statusText.textContent = "เยี่ยม! 🟢"; }
+                else if (ratio >= 35) { pageContainer.className = "container bg-yellow"; statusText.textContent = "อีกนิด! 🟡"; }
+                else { pageContainer.className = "container bg-red"; statusText.textContent = "เบาไป! 🔴"; }
 
-                clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(stopTestRound, 1500);
+                // 2. Logic ตัดรอบ: ถ้าเคยเป่าแรงแล้ว และค่าลดลงมาต่ำกว่า 30 ให้จบลูกทันที
+                if (displayValue < 30 && roundDuration > 0.3) {
+                    stopAndAutoNext();
+                    return; // หยุด draw loop นี้
+                }
             }
             
             document.getElementById('val-num').textContent = Math.round(displayValue);
@@ -170,12 +178,20 @@
         draw();
     }
 
-    function stopTestRound() {
-        isMeasuring = false; clearTimeout(silenceTimer); cancelAnimationFrame(animationId);
-        allRounds.push(currentRoundMax); allDurations.push(roundDuration);
-        document.getElementById('startBtn').classList.remove('hidden'); document.getElementById('stopBtn').classList.add('hidden');
-        document.getElementById('page2').className = "container bg-normal";
-        if (round >= 5) setTimeout(showFinal, 800);
+    function stopAndAutoNext() {
+        isMeasuring = false;
+        cancelAnimationFrame(animationId);
+        allRounds.push(currentRoundMax);
+        allDurations.push(roundDuration);
+        
+        if (round < 5) {
+            document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " แล้ว... เตรียมรอบถัดไป";
+            setTimeout(() => {
+                startTestRound(); // เริ่มรอบใหม่ให้อัตโนมัติ
+            }, 1200); // หน่วงเวลา 1.2 วินาทีเพื่อให้ผู้ใช้พักหายใจ
+        } else {
+            showFinal();
+        }
     }
 
     function showFinal() {
@@ -186,27 +202,21 @@
         
         document.getElementById('summary-data').innerHTML = `
             <b>ผู้ใช้งาน:</b> ${user.name}<br>
-            <b>ค่ามาตรฐานปอด (Predicted):</b> ${user.predicted} L/min<br>
-            <b>ประสิทธิภาพเฉลี่ย:</b> ${ratio.toFixed(1)}% ของเป้าหมาย
+            <b>ประสิทธิภาพเฉลี่ย:</b> ${ratio.toFixed(1)}% ของค่ามาตรฐาน (${user.predicted} L/min)
         `;
 
         document.getElementById('final-avg-val').textContent = Math.round(avgPefr);
-        document.getElementById('final-avg-duration').textContent = `ระยะเวลาเฉลี่ย: ${(allDurations.reduce((a,b)=>a+b,0)/5).toFixed(2)} วินาที`;
         
         const st = document.getElementById('final-status'), card = document.getElementById('final-card'), adv = document.getElementById('advice-box');
-        
         if (ratio >= 55) {
-            st.textContent = "ปกติ (Green Zone) 🟢"; card.style.background = "#dcfce7"; card.style.color = "#15803d";
-            adv.style.background = "#f0fdf4"; adv.style.color = "#166534";
-            adv.innerHTML = `<div class="advice-title">✅ คำแนะนำ:</div>สุขภาพปอดแข็งแรงดี ควรออกกำลังกายสม่ำเสมอเพื่อรักษาประสิทธิภาพการหายใจ`;
+            st.textContent = "ปกติ 🟢"; card.style.background = "#dcfce7"; card.style.color = "#15803d";
+            adv.innerHTML = `สุขภาพปอดดีเยี่ยม ควรออกกำลังกายสม่ำเสมอ`;
         } else if (ratio >= 35) {
-            st.textContent = "เฝ้าระวัง (Yellow Zone) 🟡"; card.style.background = "#fef3c7"; card.style.color = "#b45309";
-            adv.style.background = "#fffbeb"; adv.style.color = "#92400e";
-            adv.innerHTML = `<div class="advice-title">⚠️ คำแนะนำ:</div>สมรรถภาพปอดเริ่มลดลง ควรฝึกการหายใจลึกๆ และหลีกเลี่ยงมลพิษหรือฝุ่นควัน`;
+            st.textContent = "เฝ้าระวัง 🟡"; card.style.background = "#fef3c7"; card.style.color = "#b45309";
+            adv.innerHTML = `สมรรถภาพปอดเริ่มลดลง ควรฝึกการหายใจลึกๆ`;
         } else {
-            st.textContent = "ควรพบแพทย์ (Red Zone) 🔴"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c";
-            adv.style.background = "#fef2f2"; adv.style.color = "#991b1b";
-            adv.innerHTML = `<div class="advice-title">🚨 คำแนะนำด่วน:</div>ค่าแรงลมต่ำกว่าเกณฑ์มาก หากมีอาการเหนื่อยหรือหอบหืด ควรปรึกษาแพทย์โดยเร็ว`;
+            st.textContent = "ควรพบแพทย์ 🔴"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c";
+            adv.innerHTML = `ค่าแรงลมต่ำกว่าเกณฑ์มาก ควรปรึกษาแพทย์โดยเร็ว`;
         }
     }
 </script>
